@@ -1,0 +1,35 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{84FF32D3-4EFC-8FE0-85C6-1982B4A08650}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "SupermarketMayhem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"AIModule",
+				"UMG"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "StateTree",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayStateTree",
+			"Enabled": true
+		}
+	]
+}

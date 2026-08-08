@@ -8,7 +8,7 @@ Core fantasy:
 
 ## Non-negotiable core decisions
 - Platform: PC / Steam
-- Engine: Unreal Engine 5.5
+- Engine: Unreal Engine 5.8
 - Programming: C++ + Blueprints
 - Camera: First Person
 - Target match size: 2-8 players
@@ -67,7 +67,7 @@ If the user changes a core decision:
 
 ## Current state
 Milestone 0 is working:
-- UE5.5 project exists
+- UE5.8 project exists
 - First Person template works
 - WASD works
 - mouse look works

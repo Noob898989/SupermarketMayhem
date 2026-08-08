@@ -1,7 +1,7 @@
 # Supermarket Mayhem - Technical Architecture
 
 ## Engine
-Unreal Engine 5.5
+Unreal Engine 5.8
 
 ## Code
 C++ + Blueprints.
@@ -51,7 +51,7 @@ Git from the beginning. Do not commit Unreal-generated directories such as:
 - DerivedDataCache
 
 ## Plugins
-Only add plugins with a documented purpose, UE5.5 compatibility and acceptable licensing/cost.
+Only add plugins with a documented purpose, UE5.8 compatibility and acceptable licensing/cost.
 
 ## Testing
 Each milestone needs a reproducible test. Multiplayer tests should progress from local clients to real Steam sessions.

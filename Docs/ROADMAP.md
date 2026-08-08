@@ -2,7 +2,7 @@
 
 ## Phase 0 - Foundation
 Status: IN PROGRESS
-- UE5.5 installed
+- UE5.8 installed
 - First Person C++ template working
 - WASD verified
 - mouse look verified

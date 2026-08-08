@@ -36,6 +36,18 @@ No ranked ladder for V1.
 ## D012 - Claude Code
 Claude Code is an implementation assistant. The user remains the product/design decision maker.
 
+## D013 - Engine version
+Unreal Engine 5.8 is the current and binding engine version for this project.
+
+Verified: the project's EngineAssociation GUID
+({84FF32D3-4EFC-8FE0-85C6-1982B4A08650}) resolves to the UE 5.8 install on
+this machine (D:\Program Files\Epic Games\UE_5.8). SupermarketMayhemEditor has
+been built successfully against this engine.
+
+Earlier documentation referenced UE 5.5; this was outdated and has been
+corrected throughout Docs/ and CLAUDE.md. No gameplay, assets, map content, or
+the .uproject EngineAssociation were changed as part of this correction.
+
 ## Change protocol
 When a core decision changes:
 1. add a new decision entry

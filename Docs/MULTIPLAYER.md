@@ -33,7 +33,7 @@ Dedicated servers are the preferred final direction if the game reaches producti
 ## Steam
 Steam is the first platform and should cover identity, friends, invites, lobbies and the selected networking/matchmaking approach.
 
-Do not lock in a specific plugin/API implementation until its UE5.5 compatibility is verified.
+Do not lock in a specific plugin/API implementation until its UE5.8 compatibility is verified.
 
 ## Party
 A party remains together when entering public matchmaking.

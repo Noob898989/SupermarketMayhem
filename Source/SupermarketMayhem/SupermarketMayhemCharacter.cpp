@@ -9,6 +9,7 @@
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "SupermarketMayhem.h"
+#include "SupermarketMayhemDisguiseComponent.h"
 
 ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 {
@@ -42,6 +43,8 @@ ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 	// Configure character movement
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 	GetCharacterMovement()->AirControl = 0.5f;
+
+	DisguiseComponent = CreateDefaultSubobject<USupermarketMayhemDisguiseComponent>(TEXT("DisguiseComponent"));
 }
 
 void ASupermarketMayhemCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -59,6 +62,9 @@ void ASupermarketMayhemCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 		// Looking/Aiming
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASupermarketMayhemCharacter::LookInput);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ASupermarketMayhemCharacter::LookInput);
+
+		// Interacting
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASupermarketMayhemCharacter::DoInteract);
 	}
 	else
 	{
@@ -117,4 +123,12 @@ void ASupermarketMayhemCharacter::DoJumpEnd()
 {
 	// pass StopJumping to the character
 	StopJumping();
+}
+
+void ASupermarketMayhemCharacter::DoInteract()
+{
+	if (DisguiseComponent)
+	{
+		DisguiseComponent->TryInteract();
+	}
 }

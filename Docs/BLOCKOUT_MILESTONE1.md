@@ -1,5 +1,11 @@
 # Supermarket Mayhem - Blockout Milestone 1
 
+**Status: Umgesetzt.** Der Blockout wurde im Editor gebaut und ist als
+`Content/Supermarket/Maps/Lvl_SupermarketBlockout.umap` committed (siehe
+Commit `c6d7746`, "Complete AP2 supermarket blockout and AP3 round
+system"). Siehe Docs/ROADMAP.md, Phase 1, fuer den aktuellen
+Gesamtstatus.
+
 Bauplan fuer den ersten spielbaren Supermarkt-Blockout. Dieses Dokument ist die
 Referenz fuer die manuellen Editor-Schritte, da Claude Code Maps/Blueprints nicht
 direkt erzeugen kann (siehe Begruendung im Analyse-Chat / DECISIONS.md-Kontext).

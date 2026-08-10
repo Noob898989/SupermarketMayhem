@@ -66,12 +66,22 @@ If the user changes a core decision:
 - then implement the approved change
 
 ## Current state
-Milestone 0 is working:
-- UE5.8 project exists
-- First Person template works
-- WASD works
-- mouse look works
-- Git is installed
+Docs/ROADMAP.md is the authoritative, up-to-date source for current
+phase-by-phase status (including committed/uncommitted/untracked and
+verification state). Do not restate detailed status here - update
+Docs/ROADMAP.md instead when the project state changes.
 
-Next target:
-Create a small supermarket blockout and establish the first clean playable milestone.
+Summary only (see Docs/ROADMAP.md for details, verification evidence and
+open items):
+- Phase 0 (Foundation): Done.
+- Phase 1 (First playable): supermarket blockout done; interaction
+  framework/placeholder products in progress (uncommitted/untracked, not
+  yet compiled or tested).
+- Phase 2 (Prop system): in progress (uncommitted/untracked, not yet
+  compiled or tested).
+- Phase 5 (Round system): implemented and verified in PIE, but local-only
+  (non-replicated) and hardcoded to exactly 2 players; implemented ahead of
+  Phase 2/3 in the order below (see Docs/ROADMAP.md, Phase 5 note).
+
+Open questions requiring a Game Director decision are tracked in
+Docs/DECISIONS.md under "Open (not yet decided)".

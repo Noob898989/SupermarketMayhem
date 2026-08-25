@@ -18,6 +18,8 @@ class SUPERMARKETMAYHEM_API ASupermarketMayhemGameState : public AGameStateBase
 public:
 	ASupermarketMayhemGameState();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Supermarket Mayhem|Round")
 	ESupermarketMayhemRoundState GetCurrentRoundState() const { return CurrentRoundState; }
 
@@ -31,9 +33,9 @@ public:
 	void SetRoundTimeRemaining(float NewRoundTimeRemaining) { RoundTimeRemaining = NewRoundTimeRemaining; }
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Supermarket Mayhem|Round", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Round", meta = (AllowPrivateAccess = "true"))
 	ESupermarketMayhemRoundState CurrentRoundState = ESupermarketMayhemRoundState::WaitingToStart;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Supermarket Mayhem|Round", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Round", meta = (AllowPrivateAccess = "true"))
 	float RoundTimeRemaining = 0.0f;
 };

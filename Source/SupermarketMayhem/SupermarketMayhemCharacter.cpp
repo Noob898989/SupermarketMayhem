@@ -10,6 +10,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "SupermarketMayhem.h"
 #include "SupermarketMayhemDisguiseComponent.h"
+#include "SupermarketMayhemHunterComponent.h"
+#include "SupermarketMayhemPlayerState.h"
 
 ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 {
@@ -45,6 +47,21 @@ ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 	GetCharacterMovement()->AirControl = 0.5f;
 
 	DisguiseComponent = CreateDefaultSubobject<USupermarketMayhemDisguiseComponent>(TEXT("DisguiseComponent"));
+
+	HunterComponent = CreateDefaultSubobject<USupermarketMayhemHunterComponent>(TEXT("HunterComponent"));
+}
+
+void ASupermarketMayhemCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	if (ASupermarketMayhemPlayerState* MayhemPlayerState = GetPlayerState<ASupermarketMayhemPlayerState>())
+	{
+		if (DisguiseComponent)
+		{
+			DisguiseComponent->ApplyReplicatedDisguiseState(MayhemPlayerState->IsDisguised(), MayhemPlayerState->GetCurrentPropId());
+		}
+	}
 }
 
 void ASupermarketMayhemCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -65,6 +82,9 @@ void ASupermarketMayhemCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 
 		// Interacting
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASupermarketMayhemCharacter::DoInteract);
+
+		// Eliminating
+		EnhancedInputComponent->BindAction(EliminateAction, ETriggerEvent::Started, this, &ASupermarketMayhemCharacter::DoEliminate);
 	}
 	else
 	{
@@ -130,5 +150,30 @@ void ASupermarketMayhemCharacter::DoInteract()
 	if (DisguiseComponent)
 	{
 		DisguiseComponent->TryInteract();
+	}
+}
+
+void ASupermarketMayhemCharacter::DoEliminate()
+{
+	if (HunterComponent)
+	{
+		HunterComponent->TryEliminate();
+	}
+}
+
+void ASupermarketMayhemCharacter::ApplyEliminatedState()
+{
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		CachedMaxWalkSpeedBeforeElimination = MovementComponent->MaxWalkSpeed;
+		MovementComponent->MaxWalkSpeed = 0.0f;
+	}
+}
+
+void ASupermarketMayhemCharacter::ClearEliminatedState()
+{
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->MaxWalkSpeed = CachedMaxWalkSpeedBeforeElimination;
 	}
 }

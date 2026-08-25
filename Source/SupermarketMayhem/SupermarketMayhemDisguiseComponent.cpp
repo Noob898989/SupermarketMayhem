@@ -8,6 +8,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "SupermarketMayhemCharacter.h"
 #include "SupermarketMayhemGameState.h"
 #include "SupermarketMayhemPlayerState.h"
@@ -17,9 +18,30 @@
 USupermarketMayhemDisguiseComponent::USupermarketMayhemDisguiseComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
+    SetIsReplicated(true);
 }
 
 void USupermarketMayhemDisguiseComponent::TryInteract()
+{
+    ServerTryInteract();
+}
+
+void USupermarketMayhemDisguiseComponent::ApplyReplicatedDisguiseState(bool bNewIsDisguised, FName NewPropId)
+{
+    if (bNewIsDisguised)
+    {
+        if (ASupermarketMayhemProp* TargetProp = FindPropById(NewPropId))
+        {
+            ApplyDisguiseVisuals(TargetProp);
+        }
+    }
+    else
+    {
+        RemoveDisguiseVisuals(CurrentProp);
+    }
+}
+
+void USupermarketMayhemDisguiseComponent::ServerTryInteract_Implementation()
 {
     const UWorld* World = GetWorld();
     const ASupermarketMayhemGameState* MayhemGameState =
@@ -31,15 +53,30 @@ void USupermarketMayhemDisguiseComponent::TryInteract()
         return;
     }
 
-    if (CurrentProp)
+    ASupermarketMayhemCharacter* OwnerCharacter =
+        Cast<ASupermarketMayhemCharacter>(GetOwner());
+
+    ASupermarketMayhemPlayerState* MayhemPlayerState =
+        OwnerCharacter ? OwnerCharacter->GetPlayerState<ASupermarketMayhemPlayerState>() : nullptr;
+
+    if (MayhemPlayerState && MayhemPlayerState->IsDisguised())
     {
+        ASupermarketMayhemProp* DisguisedProp =
+            FindPropById(MayhemPlayerState->GetCurrentPropId());
+
         RemoveDisguise();
+        RemoveDisguiseVisuals(DisguisedProp);
         return;
     }
 
-    if (ASupermarketMayhemProp* TargetProp = FindInteractableProp())
+    ASupermarketMayhemProp* TargetProp = FindInteractableProp();
+
+    if (TargetProp)
     {
-        TryDisguise(TargetProp);
+        if (TryDisguise(TargetProp))
+        {
+            ApplyDisguiseVisuals(TargetProp);
+        }
     }
 }
 
@@ -77,11 +114,67 @@ bool USupermarketMayhemDisguiseComponent::TryDisguise(ASupermarketMayhemProp* Ta
         return false;
     }
 
-    UStaticMeshComponent* PropMeshComponent = TargetProp->GetPropMeshComponent();
-
-    if (!PropMeshComponent)
+    if (!TargetProp->GetPropMeshComponent())
     {
         return false;
+    }
+
+    MayhemPlayerState->SetDisguiseState(true, TargetProp->GetPropId());
+
+    return true;
+}
+
+void USupermarketMayhemDisguiseComponent::ForceRemoveDisguise()
+{
+    ASupermarketMayhemCharacter* OwnerCharacter =
+        Cast<ASupermarketMayhemCharacter>(GetOwner());
+
+    ASupermarketMayhemPlayerState* MayhemPlayerState =
+        OwnerCharacter ? OwnerCharacter->GetPlayerState<ASupermarketMayhemPlayerState>() : nullptr;
+
+    if (!MayhemPlayerState || !MayhemPlayerState->IsDisguised())
+    {
+        return;
+    }
+
+    ASupermarketMayhemProp* DisguisedProp =
+        FindPropById(MayhemPlayerState->GetCurrentPropId());
+
+    RemoveDisguise();
+    RemoveDisguiseVisuals(DisguisedProp);
+}
+
+void USupermarketMayhemDisguiseComponent::RemoveDisguise()
+{
+    ASupermarketMayhemCharacter* OwnerCharacter =
+        Cast<ASupermarketMayhemCharacter>(GetOwner());
+
+    ASupermarketMayhemPlayerState* MayhemPlayerState =
+        OwnerCharacter ? OwnerCharacter->GetPlayerState<ASupermarketMayhemPlayerState>() : nullptr;
+
+    if (!MayhemPlayerState || !MayhemPlayerState->IsDisguised())
+    {
+        return;
+    }
+
+    MayhemPlayerState->SetDisguiseState(false, NAME_None);
+}
+
+void USupermarketMayhemDisguiseComponent::ApplyDisguiseVisuals(ASupermarketMayhemProp* TargetProp)
+{
+    if (!TargetProp)
+    {
+        return;
+    }
+
+    ASupermarketMayhemCharacter* OwnerCharacter =
+        Cast<ASupermarketMayhemCharacter>(GetOwner());
+
+    UStaticMeshComponent* PropMeshComponent = TargetProp->GetPropMeshComponent();
+
+    if (!OwnerCharacter || !PropMeshComponent)
+    {
+        return;
     }
 
     USkeletalMeshComponent* FirstPersonMesh = OwnerCharacter->GetFirstPersonMesh();
@@ -114,19 +207,10 @@ bool USupermarketMayhemDisguiseComponent::TryDisguise(ASupermarketMayhemProp* Ta
     TargetProp->SetWornByHider(true);
 
     CurrentProp = TargetProp;
-
-    MayhemPlayerState->SetDisguiseState(true, TargetProp->GetPropId());
-
-    return true;
 }
 
-void USupermarketMayhemDisguiseComponent::RemoveDisguise()
+void USupermarketMayhemDisguiseComponent::RemoveDisguiseVisuals(ASupermarketMayhemProp* TargetProp)
 {
-    if (!CurrentProp)
-    {
-        return;
-    }
-
     ASupermarketMayhemCharacter* OwnerCharacter =
         Cast<ASupermarketMayhemCharacter>(GetOwner());
 
@@ -152,17 +236,9 @@ void USupermarketMayhemDisguiseComponent::RemoveDisguise()
         }
     }
 
-    CurrentProp->SetWornByHider(false);
-
-    if (OwnerCharacter)
+    if (TargetProp)
     {
-        ASupermarketMayhemPlayerState* MayhemPlayerState =
-            OwnerCharacter->GetPlayerState<ASupermarketMayhemPlayerState>();
-
-        if (MayhemPlayerState)
-        {
-            MayhemPlayerState->SetDisguiseState(false, NAME_None);
-        }
+        TargetProp->SetWornByHider(false);
     }
 
     CurrentProp = nullptr;
@@ -209,7 +285,33 @@ ASupermarketMayhemProp* USupermarketMayhemDisguiseComponent::FindInteractablePro
             ECC_Visibility,
             QueryParams))
     {
-        return Cast<ASupermarketMayhemProp>(HitResult.GetActor());
+        ASupermarketMayhemProp* HitProp = Cast<ASupermarketMayhemProp>(HitResult.GetActor());
+        return HitProp;
+    }
+
+    return nullptr;
+}
+
+ASupermarketMayhemProp* USupermarketMayhemDisguiseComponent::FindPropById(FName PropId) const
+{
+    if (PropId.IsNone())
+    {
+        return nullptr;
+    }
+
+    UWorld* World = GetWorld();
+
+    if (!World)
+    {
+        return nullptr;
+    }
+
+    for (TActorIterator<ASupermarketMayhemProp> It(World); It; ++It)
+    {
+        if (It->GetPropId() == PropId)
+        {
+            return *It;
+        }
     }
 
     return nullptr;

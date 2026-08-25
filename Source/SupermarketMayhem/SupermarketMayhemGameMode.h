@@ -10,6 +10,7 @@
 
 class APlayerController;
 class ASupermarketMayhemGameState;
+class ASupermarketMayhemPlayerState;
 
 /**
  *  Simple GameMode for a first person game.
@@ -29,6 +30,15 @@ public:
 	/** Called when a player logs in. Assigns Hider/Hunter roles to the first two players and starts the round. */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	/**
+	 * Server-authoritative: eliminates TargetPlayerState (only valid during
+	 * the Hunt phase, only for the Hider role; no-op if already eliminated).
+	 * Clears any active disguise first (reusing the existing disguise
+	 * replication), then marks the PlayerState eliminated, then checks the
+	 * round's win condition.
+	 */
+	void EliminateHider(ASupermarketMayhemPlayerState* TargetPlayerState);
+
 protected:
 	/** Duration of the Preparation phase, in seconds. */
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round")
@@ -37,6 +47,10 @@ protected:
 	/** Duration of the Hunt phase, in seconds. */
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round")
 	float HuntDuration = 60.0f;
+
+	/** Duration of the Result phase, in seconds, before the round automatically restarts at Preparation. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round")
+	float ResultDuration = 8.0f;
 
 	/** How often RoundTimeRemaining and the on-screen timer message are refreshed, in seconds. */
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round")
@@ -57,8 +71,11 @@ protected:
 	/** Starts the Hunt phase: unlocks the Hunter's movement and starts the phase timer. */
 	void StartHuntPhase();
 
-	/** Starts the Result phase: clears all round timers and zeroes the remaining round time. */
+	/** Starts the Result phase: clears all round timers and starts the timer that restarts the round at Preparation after ResultDuration. */
 	void StartResultPhase();
+
+	/** Resets the Hider's per-round state (elimination, disguise) so a new round starts clean. No-op if there is no Hider yet. Does not change roles. */
+	void ResetHiderRoundState();
 
 	/** Refreshes RoundTimeRemaining on the GameState and shows an on-screen debug message with the remaining time. */
 	void UpdateRoundTimeRemaining();

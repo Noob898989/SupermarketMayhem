@@ -12,6 +12,7 @@ class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 class USupermarketMayhemDisguiseComponent;
+class USupermarketMayhemHunterComponent;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -36,6 +37,10 @@ class ASupermarketMayhemCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USupermarketMayhemDisguiseComponent* DisguiseComponent;
 
+	/** Handles a Hunter's attempt to eliminate a nearby Hider */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	USupermarketMayhemHunterComponent* HunterComponent;
+
 protected:
 
 	/** Jump Input Action */
@@ -57,6 +62,10 @@ protected:
 	/** Interact Input Action (disguise as / revert from a nearby prop) */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* InteractAction;
+
+	/** Eliminate Input Action (Hunter attempts to eliminate a nearby Hider) */
+	UPROPERTY(EditAnywhere, Category ="Input")
+	UInputAction* EliminateAction;
 
 public:
 	ASupermarketMayhemCharacter();
@@ -89,10 +98,17 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoInteract();
 
+	/** Handles eliminate inputs from either controls or UI interfaces */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoEliminate();
+
 protected:
 
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+
+	/** Reacts to the replicated PlayerState reference becoming valid/changing. Re-applies the current disguise state to cover replication ordering races with PlayerState::OnRep_DisguiseState. */
+	virtual void OnRep_PlayerState() override;
 	
 
 public:
@@ -102,6 +118,21 @@ public:
 
 	/** Returns first person camera component **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	/** Returns the disguise component **/
+	USupermarketMayhemDisguiseComponent* GetDisguiseComponent() const { return DisguiseComponent; }
+
+	/** Locks this character's movement in reaction to its PlayerState becoming eliminated. Called from PlayerState::OnRep_Eliminated (remote clients) and GameMode::EliminateHider (server/host). */
+	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Elimination")
+	void ApplyEliminatedState();
+
+	/** Restores the movement speed cached by ApplyEliminatedState(). Called by GameMode when a new round starts. */
+	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Elimination")
+	void ClearEliminatedState();
+
+protected:
+	/** MaxWalkSpeed cached by ApplyEliminatedState() before locking movement; restored by ClearEliminatedState(). */
+	float CachedMaxWalkSpeedBeforeElimination = 0.0f;
 
 };
 

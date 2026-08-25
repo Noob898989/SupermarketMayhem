@@ -7,6 +7,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "SupermarketMayhem.h"
+#include "SupermarketMayhemCharacter.h"
+#include "SupermarketMayhemDisguiseComponent.h"
 #include "SupermarketMayhemGameState.h"
 #include "SupermarketMayhemPlayerState.h"
 
@@ -88,6 +90,8 @@ void ASupermarketMayhemGameMode::SetRoundState(ESupermarketMayhemRoundState NewR
 void ASupermarketMayhemGameMode::StartPreparationPhase()
 {
 	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Starting Preparation phase (%.1f s)."), PreparationDuration);
+
+	ResetHiderRoundState();
 
 	SetRoundState(ESupermarketMayhemRoundState::Preparation);
 
@@ -213,26 +217,126 @@ void ASupermarketMayhemGameMode::StartHuntPhase()
 
 void ASupermarketMayhemGameMode::StartResultPhase()
 {
-	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Starting Result phase."));
+	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Starting Result phase (%.1f s)."), ResultDuration);
 
 	SetRoundState(ESupermarketMayhemRoundState::Result);
 
 	UnlockHunterMovement();
 
-	UWorld* World = GetWorld();
-	if (World)
+	if (HiderController)
 	{
-		World->GetTimerManager().ClearTimer(PhaseTimerHandle);
-		World->GetTimerManager().ClearTimer(RoundTimeUpdateTimerHandle);
+		if (ASupermarketMayhemPlayerState* HiderPlayerState = HiderController->GetPlayerState<ASupermarketMayhemPlayerState>())
+		{
+			if (!HiderPlayerState->IsEliminated())
+			{
+				UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] %s escaped!"), *GetNameSafe(HiderPlayerState));
+
+				if (GEngine)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, FString::Printf(TEXT("Hider escaped! (%s)"), *GetNameSafe(HiderPlayerState)));
+				}
+			}
+		}
 	}
 
-	CurrentPhaseEndTime = 0.0f;
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
 
 	ASupermarketMayhemGameState* MayhemGameState = GetSupermarketMayhemGameState();
 	if (MayhemGameState)
 	{
-		MayhemGameState->SetRoundTimeRemaining(0.0f);
+		MayhemGameState->SetRoundTimeRemaining(ResultDuration);
 	}
+
+	CurrentPhaseEndTime = World->GetTimeSeconds() + ResultDuration;
+
+	World->GetTimerManager().ClearTimer(PhaseTimerHandle);
+	World->GetTimerManager().SetTimer(PhaseTimerHandle, this, &ASupermarketMayhemGameMode::StartPreparationPhase, ResultDuration, false);
+
+	World->GetTimerManager().ClearTimer(RoundTimeUpdateTimerHandle);
+	World->GetTimerManager().SetTimer(RoundTimeUpdateTimerHandle, this, &ASupermarketMayhemGameMode::UpdateRoundTimeRemaining, RoundTimeUpdateInterval, true);
+}
+
+void ASupermarketMayhemGameMode::EliminateHider(ASupermarketMayhemPlayerState* TargetPlayerState)
+{
+	if (!TargetPlayerState || TargetPlayerState->IsEliminated())
+	{
+		return;
+	}
+
+	ASupermarketMayhemGameState* MayhemGameState = GetSupermarketMayhemGameState();
+	if (!MayhemGameState ||
+		MayhemGameState->GetCurrentRoundState() != ESupermarketMayhemRoundState::Hunt)
+	{
+		return;
+	}
+
+	if (TargetPlayerState->GetCurrentRole() != ESupermarketMayhemPlayerRole::Hider)
+	{
+		return;
+	}
+
+	if (TargetPlayerState->IsDisguised())
+	{
+		if (ASupermarketMayhemCharacter* TargetCharacter = Cast<ASupermarketMayhemCharacter>(TargetPlayerState->GetPawn()))
+		{
+			if (USupermarketMayhemDisguiseComponent* TargetDisguiseComponent = TargetCharacter->GetDisguiseComponent())
+			{
+				TargetDisguiseComponent->ForceRemoveDisguise();
+			}
+		}
+	}
+
+	TargetPlayerState->SetEliminationState(true);
+
+	if (ASupermarketMayhemCharacter* EliminatedCharacter = Cast<ASupermarketMayhemCharacter>(TargetPlayerState->GetPawn()))
+	{
+		EliminatedCharacter->ApplyEliminatedState();
+	}
+
+	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] %s eliminated."), *GetNameSafe(TargetPlayerState));
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s eliminated!"), *GetNameSafe(TargetPlayerState)));
+	}
+
+	// The round system is currently hardcoded to a single Hider (HiderController,
+	// see Docs/DECISIONS.md O003), so eliminating the one valid Hider target
+	// above always means "all Hiders are eliminated" - end the Hunt immediately.
+	StartResultPhase();
+}
+
+void ASupermarketMayhemGameMode::ResetHiderRoundState()
+{
+	if (!HiderController)
+	{
+		return;
+	}
+
+	ASupermarketMayhemPlayerState* HiderPlayerState = HiderController->GetPlayerState<ASupermarketMayhemPlayerState>();
+	if (!HiderPlayerState)
+	{
+		return;
+	}
+
+	if (ASupermarketMayhemCharacter* HiderCharacter = Cast<ASupermarketMayhemCharacter>(HiderPlayerState->GetPawn()))
+	{
+		if (USupermarketMayhemDisguiseComponent* DisguiseComponent = HiderCharacter->GetDisguiseComponent())
+		{
+			DisguiseComponent->ForceRemoveDisguise();
+		}
+
+		if (HiderPlayerState->IsEliminated())
+		{
+			HiderCharacter->ClearEliminatedState();
+		}
+	}
+
+	HiderPlayerState->SetEliminationState(false);
 }
 
 void ASupermarketMayhemGameMode::UpdateRoundTimeRemaining()

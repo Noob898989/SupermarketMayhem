@@ -30,6 +30,8 @@ class SUPERMARKETMAYHEM_API ASupermarketMayhemPlayerState : public APlayerState
 public:
 	ASupermarketMayhemPlayerState();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	/** Returns the role currently assigned to this player. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Supermarket Mayhem|Role")
 	ESupermarketMayhemPlayerRole GetCurrentRole() const { return CurrentRole; }
@@ -57,9 +59,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Disguise")
 	void SetDisguiseState(bool bNewIsDisguised, FName NewPropId);
 
+	/** Returns whether this player has been eliminated (caught by the Hunter) this round. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Supermarket Mayhem|Elimination")
+	bool IsEliminated() const { return bIsEliminated; }
+
+	/** Sets the authoritative elimination state for this player. */
+	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Elimination")
+	void SetEliminationState(bool bNewIsEliminated) { bIsEliminated = bNewIsEliminated; }
+
 protected:
 	/** Current gameplay role of this player (Hider/Hunter/None). */
-	UPROPERTY(BlueprintReadOnly, Category = "Supermarket Mayhem|Role", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Role", meta = (AllowPrivateAccess = "true"))
 	ESupermarketMayhemPlayerRole CurrentRole = ESupermarketMayhemPlayerRole::None;
 
 	/**
@@ -70,7 +80,7 @@ protected:
 	 * etc.) belongs to the prop/disguise system, which is a separate,
 	 * later work package.
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "Supermarket Mayhem|Disguise", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_DisguiseState, BlueprintReadOnly, Category = "Supermarket Mayhem|Disguise", meta = (AllowPrivateAccess = "true"))
 	bool bIsDisguised = false;
 
 	/**
@@ -87,6 +97,24 @@ protected:
 	 * to be a small, additive change.
 	 * NAME_None means "not disguised".
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "Supermarket Mayhem|Disguise", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_DisguiseState, BlueprintReadOnly, Category = "Supermarket Mayhem|Disguise", meta = (AllowPrivateAccess = "true"))
 	FName CurrentPropId = NAME_None;
+
+	/**
+	 * Whether this player has been eliminated (caught by the Hunter) this round.
+	 *
+	 * Set server-authoritatively by ASupermarketMayhemGameMode::EliminateHider,
+	 * which also calls ASupermarketMayhemCharacter::ApplyEliminatedState()
+	 * directly (RepNotify does not fire on the server for its own change).
+	 */
+	UPROPERTY(ReplicatedUsing = OnRep_Eliminated, BlueprintReadOnly, Category = "Supermarket Mayhem|Elimination", meta = (AllowPrivateAccess = "true"))
+	bool bIsEliminated = false;
+
+	/** Reacts to a replicated disguise-state change. Finds the associated Character via its already-replicated PlayerState reference and applies/removes cosmetics accordingly. */
+	UFUNCTION()
+	void OnRep_DisguiseState();
+
+	/** Reacts to a replicated elimination-state change. Finds the associated Character via its already-replicated PlayerState reference and locks its movement. */
+	UFUNCTION()
+	void OnRep_Eliminated();
 };

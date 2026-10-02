@@ -33,8 +33,8 @@ Host/listen-server is acceptable for early prototypes; production should remain 
 ## D011 - Ranked
 No ranked ladder for V1.
 
-## D012 - Claude Code
-Claude Code is an implementation assistant. The user remains the product/design decision maker.
+## D012 - Claude Code (superseded)
+Claude Code was previously used as an implementation assistant. This decision is superseded by D015; Claude Code is no longer part of the active project workflow.
 
 ## D013 - Engine version
 Unreal Engine 5.8 is the current and binding engine version for this project.
@@ -61,12 +61,19 @@ Multiplayer prototype phase (Docs/ROADMAP.md, Phase 3), per
 Docs/MULTIPLAYER.md ("Server authority": disguise state is expected to
 become server-authoritative and replicated).
 
+## D015 - Codex autonomous development workflow
+ChatGPT is the project planning, architecture, analysis and task-management layer. Codex is the autonomous implementation and technical execution agent. Unreal Engine is the development and test environment. GitHub is the source of truth and version control.
+
+Codex should work autonomously on clearly defined tasks: inspect the project and documentation, implement related changes, build and test, diagnose and fix ordinary failures, review the final diff, update relevant documentation, and commit/push validated work. Codex should only escalate genuine product or architectural decisions that cannot be derived from the existing source of truth.
+
+Autonomy is scoped to the development project. The preferred Codex configuration is workspace-write with approval policy never. Network access may be enabled for normal development and GitHub operations. System-wide changes outside the project are not required for the normal workflow.
+
 ## Change protocol
 When a core decision changes:
 1. add a new decision entry
 2. mark the old decision as superseded if needed
 3. update affected docs
-4. update CLAUDE.md if relevant
+4. update AGENTS.md if relevant
 5. update ROADMAP.md if relevant
 
 ## Open (not yet decided)
@@ -92,7 +99,7 @@ matching Content/ folders) are unmodified UE5 template demo content, not
 part of the active game flow, but still included in the module (see
 `SupermarketMayhem.Build.cs`, PublicIncludePaths). Open question: keep as
 technical reference (e.g. for the Phase 4 Hunter weapon work, as already
-noted for the weapons/ai agents in .claude/agents/), or remove once no
+noted for the former Claude agent configuration), or remove once no
 longer needed?
 
 ### O003 - Round system scaling to 2-8 players

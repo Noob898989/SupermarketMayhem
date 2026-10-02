@@ -7,8 +7,8 @@ system"). Siehe Docs/ROADMAP.md, Phase 1, fuer den aktuellen
 Gesamtstatus.
 
 Bauplan fuer den ersten spielbaren Supermarkt-Blockout. Dieses Dokument ist die
-Referenz fuer die manuellen Editor-Schritte, da Claude Code Maps/Blueprints nicht
-direkt erzeugen kann (siehe Begruendung im Analyse-Chat / DECISIONS.md-Kontext).
+Referenz fuer die manuellen Editor-Schritte, da Maps und Blueprints im Unreal
+Editor erstellt und validiert werden.
 
 Alle Masse in Unreal-Einheiten = cm. Referenz: Spielercapsule Radius 34cm,
 Halbhoehe 96cm (Gesamthoehe ~192cm), siehe `SupermarketMayhemCharacter.cpp`.

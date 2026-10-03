@@ -49,7 +49,11 @@ performs its own server-side `ECC_Camera` trace using the server's camera view
 and configured range. Only a validated Hider hit reaches
 `GameMode::EliminateHider`; the client never supplies a target or hit result.
 The weapon's equipped state and Character's equipped-weapon reference
-replicate. This path compiles but still needs PIE verification.
+replicate, along with server-owned current ammo and reloading state. Reload
+requests use a server timer; only the server completes/refills them. Reload is
+cancelled on unequip, Result, and the next round's Preparation reset. The
+runtime Reload action is bound locally to R. This path compiles but still
+needs PIE verification.
 
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.

@@ -6,7 +6,13 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "Engine/LocalPlayer.h"
+#include "GameFramework/PlayerController.h"
+#include "InputAction.h"
 #include "InputActionValue.h"
+#include "InputCoreTypes.h"
+#include "InputMappingContext.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "SupermarketMayhem.h"
@@ -90,6 +96,26 @@ void ASupermarketMayhemCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
+		if (!RuntimeReloadAction)
+		{
+			RuntimeReloadAction = NewObject<UInputAction>(this, TEXT("RuntimeReloadAction"));
+			RuntimeReloadMappingContext = NewObject<UInputMappingContext>(this, TEXT("RuntimeReloadMappingContext"));
+			RuntimeReloadMappingContext->MapKey(RuntimeReloadAction, EKeys::R);
+		}
+
+		if (APlayerController* PlayerController = Cast<APlayerController>(GetController());
+			PlayerController && PlayerController->IsLocalController())
+		{
+			if (ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer())
+			{
+				if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+				{
+					InputSubsystem->AddMappingContext(RuntimeReloadMappingContext, 50);
+					ReloadInputLocalPlayer = LocalPlayer;
+				}
+			}
+		}
+
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ASupermarketMayhemCharacter::DoJumpStart);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ASupermarketMayhemCharacter::DoJumpEnd);
@@ -106,6 +132,7 @@ void ASupermarketMayhemCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 
 		// Eliminating
 		EnhancedInputComponent->BindAction(EliminateAction, ETriggerEvent::Started, this, &ASupermarketMayhemCharacter::DoEliminate);
+		EnhancedInputComponent->BindAction(RuntimeReloadAction, ETriggerEvent::Started, this, &ASupermarketMayhemCharacter::DoReload);
 	}
 	else
 	{
@@ -182,6 +209,14 @@ void ASupermarketMayhemCharacter::DoEliminate()
 	}
 }
 
+void ASupermarketMayhemCharacter::DoReload()
+{
+	if (HunterComponent)
+	{
+		HunterComponent->TryReload();
+	}
+}
+
 void ASupermarketMayhemCharacter::SetHunterWeaponEquipped(bool bShouldBeEquipped)
 {
 	if (!HasAuthority())
@@ -211,6 +246,38 @@ void ASupermarketMayhemCharacter::SetHunterWeaponEquipped(bool bShouldBeEquipped
 		EquippedWeapon->EquipTo(this);
 		ForceNetUpdate();
 	}
+}
+
+void ASupermarketMayhemCharacter::ResetWeaponForNewRound()
+{
+	if (HasAuthority() && EquippedWeapon)
+	{
+		EquippedWeapon->ResetForNewRound();
+	}
+}
+
+void ASupermarketMayhemCharacter::CancelWeaponReload()
+{
+	if (HasAuthority() && EquippedWeapon)
+	{
+		EquippedWeapon->CancelReload();
+	}
+}
+
+void ASupermarketMayhemCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (RuntimeReloadMappingContext)
+	{
+		if (ULocalPlayer* LocalPlayer = ReloadInputLocalPlayer.Get())
+		{
+			if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+			{
+				InputSubsystem->RemoveMappingContext(RuntimeReloadMappingContext);
+			}
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void ASupermarketMayhemCharacter::ApplyEliminatedState()

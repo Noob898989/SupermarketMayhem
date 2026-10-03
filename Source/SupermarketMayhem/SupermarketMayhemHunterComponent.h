@@ -21,4 +21,8 @@ public:
 	/** Called by the existing eliminate input. Requests a shot from the equipped weapon. */
 	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Hunter")
 	void TryFire();
+
+	/** Requests reload from the equipped weapon. The weapon validates the request on the server. */
+	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Hunter")
+	void TryReload();
 };

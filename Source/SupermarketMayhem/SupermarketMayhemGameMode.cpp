@@ -154,6 +154,13 @@ void ASupermarketMayhemGameMode::StartPreparationPhase()
 	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Starting Preparation phase (%.1f s)."), PreparationDuration);
 
 	ResetHiderRoundState();
+	for (ASupermarketMayhemPlayerState* HunterPlayerState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hunter))
+	{
+		if (ASupermarketMayhemCharacter* HunterCharacter = Cast<ASupermarketMayhemCharacter>(HunterPlayerState->GetPawn()))
+		{
+			HunterCharacter->ResetWeaponForNewRound();
+		}
+	}
 
 	SetRoundState(ESupermarketMayhemRoundState::Preparation);
 
@@ -254,6 +261,13 @@ void ASupermarketMayhemGameMode::StartResultPhase()
 	SetRoundState(ESupermarketMayhemRoundState::Result);
 
 	UnlockHunterMovement();
+	for (ASupermarketMayhemPlayerState* HunterPlayerState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hunter))
+	{
+		if (ASupermarketMayhemCharacter* HunterCharacter = Cast<ASupermarketMayhemCharacter>(HunterPlayerState->GetPawn()))
+		{
+			HunterCharacter->CancelWeaponReload();
+		}
+	}
 
 	bool bAnyHiderEscaped = false;
 	for (ASupermarketMayhemPlayerState* HiderPlayerState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hider))

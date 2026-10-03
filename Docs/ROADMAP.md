@@ -96,14 +96,21 @@ Goal: one weapon can aim, fire, hit and eliminate a Hider with server authority.
   HunterComponent trace/RPC path through GameMode::EliminateHider.
 - Weapon foundation: reusable replicated ASupermarketMayhemWeapon actor,
   server-side Equip/Unequip, replicated equipped state and equipped-weapon
-  reference on Character. Existing IA_Eliminate -> DoEliminate input now
-  requests fire through HunterComponent; the weapon server RPC validates
-  Hunter role, equipped state, Hunt phase, attacker/target elimination state,
-  and a server-side ECC_Camera trace with the weapon's configured range before
-  calling the existing GameMode::EliminateHider.
-- Unreal Engine 5.8 Editor and Game Development targets compile. The new
-  weapon path has not yet been runtime/PIE-verified in this validation pass.
-- Ammo, reload, weapon mesh, animation, VFX and audio remain future work.
+  reference on Character. Existing IA_Eliminate -> DoEliminate input requests
+  fire through HunterComponent; the weapon server RPC validates Hunter role,
+  equipped state, Hunt phase, attacker/target elimination state and a
+  server-side ECC_Camera trace before calling GameMode::EliminateHider.
+- Ammo/reload: server-owned six-round default magazine, configurable capacity
+  and 1.5-second reload duration. Fire requests spend one round only after
+  server validation, including misses; empty magazines and firing during
+  reload are rejected. Reload uses a server timer, fills the magazine only on
+  valid completion during Hunt and replicates ammo/reload state. Result and
+  unequip cancel reload; each Preparation reset refills the weapon.
+- A runtime Enhanced Input Reload action is mapped to R locally, without
+  changing IA_Eliminate or existing input assets.
+- Unreal Engine 5.8 Editor and Game Development targets compile. Ammo/reload,
+  replication and elimination have not yet been runtime/PIE-verified.
+- Weapon mesh, animation, VFX and audio remain future work.
 
 ## Phase 5 - Round system
 Status: Done (committed, verified) - corresponds to AP3; extended

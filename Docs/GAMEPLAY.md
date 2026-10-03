@@ -65,8 +65,12 @@ Hunters inspect the environment, look for suspicious behavior, listen and use we
 shot from an equipped weapon actor. The weapon validates the Hunter role,
 equipment and Hunt phase and resolves hits on the server before the existing
 elimination flow runs. The weapon actor and equipped reference replicate.
-This is a technical foundation without ammo, reload, presentation or runtime
-PIE verification yet; see Docs/ROADMAP.md, Phase 4.
+The default magazine holds six rounds, and reload takes 1.5 seconds; both
+values are weapon-configurable. Press R to request a reload. Firing spends a
+round on a validated shot, including a miss; firing with no ammo or during
+reload is rejected. Ammo and reload state are server-owned and replicated.
+This foundation has no weapon presentation and still needs runtime PIE
+verification; see Docs/ROADMAP.md, Phase 4.
 
 ## Future ideas
 Possible later systems:

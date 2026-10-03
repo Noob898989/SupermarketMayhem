@@ -19,3 +19,14 @@ void USupermarketMayhemHunterComponent::TryFire()
 		}
 	}
 }
+
+void USupermarketMayhemHunterComponent::TryReload()
+{
+	if (const ASupermarketMayhemCharacter* OwnerCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner()))
+	{
+		if (ASupermarketMayhemWeapon* Weapon = OwnerCharacter->GetEquippedWeapon())
+		{
+			Weapon->RequestReload();
+		}
+	}
+}

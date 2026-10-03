@@ -14,6 +14,8 @@ class UInputAction;
 class USupermarketMayhemDisguiseComponent;
 class USupermarketMayhemHunterComponent;
 class ASupermarketMayhemWeapon;
+class ULocalPlayer;
+class UInputMappingContext;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -102,6 +104,7 @@ protected:
 	/** Handles eliminate inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoEliminate();
+	virtual void DoReload();
 
 protected:
 
@@ -109,6 +112,7 @@ protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** Reacts to the replicated PlayerState reference becoming valid/changing. Re-applies the current disguise state to cover replication ordering races with PlayerState::OnRep_DisguiseState. */
 	virtual void OnRep_PlayerState() override;
@@ -130,6 +134,10 @@ public:
 
 	/** Makes the default weapon available to a Hunter. Server-authoritative. */
 	void SetHunterWeaponEquipped(bool bShouldBeEquipped);
+	/** Refills the Hunter weapon and clears reload state at the start of each round. Server-authoritative. */
+	void ResetWeaponForNewRound();
+	/** Cancels any active server-side weapon reload, for example when Result begins. */
+	void CancelWeaponReload();
 
 	/** Locks this character's movement in reaction to its PlayerState becoming eliminated. Called from PlayerState::OnRep_Eliminated (remote clients) and GameMode::EliminateHider (server/host). */
 	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Elimination")
@@ -143,6 +151,15 @@ protected:
 	/** Weapon class used when this character is assigned the Hunter role. */
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon")
 	TSubclassOf<ASupermarketMayhemWeapon> DefaultWeaponClass;
+
+	/** Runtime Enhanced Input action/context for the default Reload key (R). */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> RuntimeReloadAction;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInputMappingContext> RuntimeReloadMappingContext;
+
+	TWeakObjectPtr<ULocalPlayer> ReloadInputLocalPlayer;
 
 	/** Server-spawned weapon actor available to relevant clients. */
 	UPROPERTY(Transient, Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Weapon", meta = (AllowPrivateAccess = "true"))

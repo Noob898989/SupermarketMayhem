@@ -9,15 +9,16 @@
 #include "SupermarketMayhemGameMode.generated.h"
 
 class APlayerController;
+class ACharacter;
 class ASupermarketMayhemGameState;
 class ASupermarketMayhemPlayerState;
 
 /**
  *  Simple GameMode for a first person game.
  *
- *  Extended for Milestone 2 with a local, non-replicated round flow for
- *  exactly two players (Hider/Hunter), intended for local PIE testing only.
- *  No networking/Steam code, no replication, no weapons/damage, no NPC AI.
+ *  Owns the server-authoritative round flow and resolves participants from
+ *  GameState::PlayerArray. RoundRoleAssignment defines the role slots for a
+ *  match; its two-player default preserves the original Hider/Hunter setup.
  */
 UCLASS(abstract)
 class ASupermarketMayhemGameMode : public AGameModeBase
@@ -27,7 +28,7 @@ class ASupermarketMayhemGameMode : public AGameModeBase
 public:
 	ASupermarketMayhemGameMode();
 
-	/** Called when a player logs in. Assigns Hider/Hunter roles to the first two players and starts the round. */
+	/** Called when a player logs in. Attempts centralized assignment and starts when the configured roster is ready. */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	/**
@@ -60,42 +61,47 @@ protected:
 	ASupermarketMayhemGameState* GetSupermarketMayhemGameState() const;
 
 	/** Assigns a role to a player's PlayerState and reports it via log and on-screen debug message. */
-	void AssignRole(APlayerController* PlayerController, ESupermarketMayhemPlayerRole NewRole);
+	void AssignRole(ASupermarketMayhemPlayerState* PlayerState, ESupermarketMayhemPlayerRole NewRole);
 
 	/** Sets the round state on the GameState and reports the transition via log and on-screen debug message. */
 	void SetRoundState(ESupermarketMayhemRoundState NewRoundState);
 
-	/** Starts the Preparation phase: locks the Hunter's movement and starts the phase and update timers. */
+	/** Starts the Preparation phase: resets all Hiders, locks all Hunters and starts timers. */
 	void StartPreparationPhase();
 
-	/** Starts the Hunt phase: unlocks the Hunter's movement and starts the phase timer. */
+	/** Starts the Hunt phase: unlocks all Hunters and starts the phase timer. */
 	void StartHuntPhase();
 
 	/** Starts the Result phase: clears all round timers and starts the timer that restarts the round at Preparation after ResultDuration. */
 	void StartResultPhase();
 
-	/** Resets the Hider's per-round state (elimination, disguise) so a new round starts clean. No-op if there is no Hider yet. Does not change roles. */
+	/** Resets every Hider's per-round state (elimination, disguise). Does not change roles. */
 	void ResetHiderRoundState();
+
+	/** Resolves connected SupermarketMayhem player states in stable GameState order. */
+	TArray<ASupermarketMayhemPlayerState*> GetConnectedPlayers() const;
+
+	/** Assigns configured role slots to the connected players once the complete roster is present. */
+	bool AssignRolesToConnectedPlayers();
+
+	/** Returns all connected players currently assigned the requested role. */
+	TArray<ASupermarketMayhemPlayerState*> GetPlayersWithRole(ESupermarketMayhemPlayerRole Role) const;
 
 	/** Refreshes RoundTimeRemaining on the GameState and shows an on-screen debug message with the remaining time. */
 	void UpdateRoundTimeRemaining();
 
-	/** Sets the Hunter's pawn MaxWalkSpeed to 0, caching the previous value so it can be restored later. */
+	/** Sets all Hunter pawns' MaxWalkSpeed to 0, caching their previous values. */
 	void LockHunterMovement();
 
-	/** Restores the Hunter's pawn MaxWalkSpeed to the value cached by LockHunterMovement. */
+	/** Restores all Hunter pawns' MaxWalkSpeed values cached by LockHunterMovement. */
 	void UnlockHunterMovement();
 
-	/** PlayerController of the first player to log in, assigned the Hider role. */
-	UPROPERTY(Transient)
-	TObjectPtr<APlayerController> HiderController;
+	/** Role slots assigned in GameState player order. Configure one slot per expected player to select a 2-8 player role distribution. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round|Roles")
+	TArray<ESupermarketMayhemPlayerRole> RoundRoleAssignment = { ESupermarketMayhemPlayerRole::Hider, ESupermarketMayhemPlayerRole::Hunter };
 
-	/** PlayerController of the second player to log in, assigned the Hunter role. */
-	UPROPERTY(Transient)
-	TObjectPtr<APlayerController> HunterController;
-
-	/** MaxWalkSpeed cached from the Hunter's pawn before locking movement; restored when unlocking. */
-	float CachedHunterMaxWalkSpeed = 0.0f;
+	/** MaxWalkSpeed cached from each Hunter character before locking movement. */
+	TMap<TWeakObjectPtr<ACharacter>, float> CachedHunterMaxWalkSpeeds;
 
 	/** True while the Hunter's movement is currently locked (i.e. during the Preparation phase). */
 	bool bHunterMovementLocked = false;

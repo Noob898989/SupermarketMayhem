@@ -27,6 +27,19 @@ Clients request actions; they should not authoritatively declare outcomes.
 ## Prototype
 A host/listen-server approach is acceptable for early development to reduce complexity and cost.
 
+## Round roster implementation
+The GameMode reads connected player states from the authoritative GameState
+player array. Role assignment uses an editable ordered role-slot array, with
+one slot per expected player; the default remains `[Hider, Hunter]` for
+backward-compatible two-player play. Matches begin when the connected roster
+exactly matches the configured slots and includes at least one Hider and one
+Hunter. Configure the active GameMode Blueprint with the intended slots for
+3-8 player testing. The final role distribution for those match sizes remains
+undecided. Round movement locking, elimination checks, result detection and
+per-round reset iterate role-assigned players rather than fixed controller
+fields. Roles, elimination and round phase writes remain server-side, while
+the existing PlayerState and GameState replication remains in place.
+
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.
 

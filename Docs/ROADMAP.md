@@ -77,9 +77,16 @@ Goal: two or more clients see replicated players/props.
   (bIsDisguised/CurrentPropId), elimination (bIsEliminated) and round
   state (CurrentRoundState/RoundTimeRemaining) are all replicated
   (DOREPLIFETIME) and correctly observed on the remote client.
-- Not yet done: scaling beyond the hardcoded 2 players
-  (HiderController/HunterController as single fields on GameMode) - see
-  Docs/DECISIONS.md O003 (open, not yet decided).
+- Variable roster scaling implemented: GameMode resolves connected
+  PlayerStates from GameState::PlayerArray, centrally assigns configurable
+  role slots, and processes all Hiders/Hunters for round transitions,
+  movement locks, elimination and reset. The default two role slots remain
+  Hider then Hunter. For 3-8 players, configure one role slot per player in
+  the active GameMode Blueprint; a default ratio remains undecided. Source
+  review confirms the fixed controller fields are gone. Unreal Engine 5.8
+  Editor and Game Development targets both compile successfully. Multiplayer
+  PIE verification remains pending; this validation session has no interactive
+  Unreal Editor control for starting and observing multi-client PIE.
 
 ## Phase 4 - Hunter weapon
 Status: In Progress (uncommitted/untracked) - core mechanic PIE-verified
@@ -120,9 +127,10 @@ Goal: complete Hider vs Hunter round with roles, timers, win condition and resul
 
 Implementation order note: this phase was implemented and verified before
 Phase 2 (Prop system) and Phase 3 (Multiplayer prototype) were started,
-which deviates from the phase order listed in this document. The round
-system is also currently hardcoded to exactly 2 players (see
-Docs/DECISIONS.md, "Open" section, O003). Round state itself
+which deviates from the phase order listed in this document. The verified
+original round flow used exactly 2 players. The GameMode now supports
+configured variable rosters; the role distribution for 3-8 players remains
+open (see Docs/DECISIONS.md O003). Round state itself
 (CurrentRoundState, RoundTimeRemaining) is replicated (DOREPLIFETIME),
 correcting the "local/non-replicated" note that used to be here. The
 phase order below documents the originally planned sequence and is

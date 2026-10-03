@@ -102,9 +102,9 @@ technical reference (e.g. for the Phase 4 Hunter weapon work, as already
 noted for the former Claude agent configuration), or remove once no
 longer needed?
 
-### O003 - Round system scaling to 2-8 players
-D003 requires a 2-8 player match size, but the current Phase 5 round system
-implementation (ASupermarketMayhemGameMode) is hardcoded to exactly 2
-players (HiderController/HunterController as single fields, not a list).
-Open question: when should this be scaled up - before or after Phase 3
-(Multiplayer prototype)?
+### O003 - Hunter/Hider distribution for 3-8 players
+The round system now supports a configurable ordered role slot per player,
+while retaining the default two-player assignment `[Hider, Hunter]`.
+The final Hunter/Hider distribution for 3-8 player matches remains open.
+Configure role slots explicitly for larger prototype tests; do not infer a
+default ratio from the implementation.

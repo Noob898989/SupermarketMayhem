@@ -11,6 +11,7 @@
 #include "SupermarketMayhemDisguiseComponent.h"
 #include "SupermarketMayhemGameState.h"
 #include "SupermarketMayhemPlayerState.h"
+#include "GameFramework/GameStateBase.h"
 
 ASupermarketMayhemGameMode::ASupermarketMayhemGameMode()
 {
@@ -27,27 +28,84 @@ void ASupermarketMayhemGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	if (!HiderController)
+	if (GetSupermarketMayhemGameState() && GetSupermarketMayhemGameState()->GetCurrentRoundState() == ESupermarketMayhemRoundState::WaitingToStart && AssignRolesToConnectedPlayers())
 	{
-		HiderController = NewPlayer;
-		AssignRole(HiderController, ESupermarketMayhemPlayerRole::Hider);
-	}
-	else if (!HunterController)
-	{
-		HunterController = NewPlayer;
-		AssignRole(HunterController, ESupermarketMayhemPlayerRole::Hunter);
 		StartPreparationPhase();
 	}
 }
 
-void ASupermarketMayhemGameMode::AssignRole(APlayerController* PlayerController, ESupermarketMayhemPlayerRole NewRole)
+TArray<ASupermarketMayhemPlayerState*> ASupermarketMayhemGameMode::GetConnectedPlayers() const
 {
-	if (!PlayerController)
+	TArray<ASupermarketMayhemPlayerState*> Players;
+	const ASupermarketMayhemGameState* RoundGameState = GetSupermarketMayhemGameState();
+	if (!RoundGameState)
 	{
-		return;
+		return Players;
 	}
 
-	ASupermarketMayhemPlayerState* MayhemPlayerState = PlayerController->GetPlayerState<ASupermarketMayhemPlayerState>();
+	for (APlayerState* PlayerState : RoundGameState->PlayerArray)
+	{
+		if (ASupermarketMayhemPlayerState* MayhemPlayerState = Cast<ASupermarketMayhemPlayerState>(PlayerState))
+		{
+			Players.Add(MayhemPlayerState);
+		}
+	}
+	return Players;
+}
+
+TArray<ASupermarketMayhemPlayerState*> ASupermarketMayhemGameMode::GetPlayersWithRole(ESupermarketMayhemPlayerRole RequestedRole) const
+{
+	TArray<ASupermarketMayhemPlayerState*> Players;
+	for (ASupermarketMayhemPlayerState* PlayerState : GetConnectedPlayers())
+	{
+		if (PlayerState->GetCurrentRole() == RequestedRole)
+		{
+			Players.Add(PlayerState);
+		}
+	}
+	return Players;
+}
+
+bool ASupermarketMayhemGameMode::AssignRolesToConnectedPlayers()
+{
+	const TArray<ASupermarketMayhemPlayerState*> Players = GetConnectedPlayers();
+	if (RoundRoleAssignment.Num() < 2 || Players.Num() != RoundRoleAssignment.Num())
+	{
+		return false;
+	}
+
+	int32 HiderCount = 0;
+	int32 HunterCount = 0;
+	for (int32 Index = 0; Index < Players.Num(); ++Index)
+	{
+		const ESupermarketMayhemPlayerRole AssignedRole = RoundRoleAssignment[Index];
+		if (AssignedRole == ESupermarketMayhemPlayerRole::Hider)
+		{
+			++HiderCount;
+		}
+		else if (AssignedRole == ESupermarketMayhemPlayerRole::Hunter)
+		{
+			++HunterCount;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	if (HiderCount == 0 || HunterCount == 0)
+	{
+		return false;
+	}
+
+	for (int32 Index = 0; Index < Players.Num(); ++Index)
+	{
+		AssignRole(Players[Index], RoundRoleAssignment[Index]);
+	}
+	return true;
+}
+
+void ASupermarketMayhemGameMode::AssignRole(ASupermarketMayhemPlayerState* MayhemPlayerState, ESupermarketMayhemPlayerRole NewRole)
+{
 	if (!MayhemPlayerState)
 	{
 		return;
@@ -58,11 +116,11 @@ void ASupermarketMayhemGameMode::AssignRole(APlayerController* PlayerController,
 	const UEnum* RoleEnum = StaticEnum<ESupermarketMayhemPlayerRole>();
 	const FString RoleName = RoleEnum ? RoleEnum->GetNameStringByValue(static_cast<int64>(NewRole)) : TEXT("Unknown");
 
-	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] %s assigned role: %s"), *GetNameSafe(PlayerController), *RoleName);
+	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] %s assigned role: %s"), *GetNameSafe(MayhemPlayerState), *RoleName);
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("%s -> Role: %s"), *GetNameSafe(PlayerController), *RoleName));
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("%s -> Role: %s"), *GetNameSafe(MayhemPlayerState), *RoleName));
 	}
 }
 
@@ -120,35 +178,18 @@ void ASupermarketMayhemGameMode::StartPreparationPhase()
 
 void ASupermarketMayhemGameMode::UnlockHunterMovement()
 {
-	if (!bHunterMovementLocked)
+	if (!bHunterMovementLocked) return;
+	for (const TPair<TWeakObjectPtr<ACharacter>, float>& Entry : CachedHunterMaxWalkSpeeds)
 	{
-		return;
+		if (ACharacter* HunterCharacter = Entry.Key.Get())
+		{
+			if (UCharacterMovementComponent* MovementComponent = HunterCharacter->GetCharacterMovement())
+			{
+				MovementComponent->MaxWalkSpeed = Entry.Value;
+			}
+		}
 	}
-
-	if (!HunterController)
-	{
-		return;
-	}
-
-	APawn* HunterPawn = HunterController->GetPawn();
-	if (!HunterPawn)
-	{
-		return;
-	}
-
-	ACharacter* HunterCharacter = Cast<ACharacter>(HunterPawn);
-	if (!HunterCharacter)
-	{
-		return;
-	}
-
-	UCharacterMovementComponent* MovementComponent = HunterCharacter->GetCharacterMovement();
-	if (!MovementComponent)
-	{
-		return;
-	}
-
-	MovementComponent->MaxWalkSpeed = CachedHunterMaxWalkSpeed;
+	CachedHunterMaxWalkSpeeds.Reset();
 	bHunterMovementLocked = false;
 
 	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Hunter movement unlocked (Hunt phase)."));
@@ -156,32 +197,19 @@ void ASupermarketMayhemGameMode::UnlockHunterMovement()
 
 void ASupermarketMayhemGameMode::LockHunterMovement()
 {
-	if (!HunterController)
+	CachedHunterMaxWalkSpeeds.Reset();
+	for (ASupermarketMayhemPlayerState* HunterState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hunter))
 	{
-		return;
+		if (ACharacter* HunterCharacter = Cast<ACharacter>(HunterState->GetPawn()))
+		{
+			if (UCharacterMovementComponent* MovementComponent = HunterCharacter->GetCharacterMovement())
+			{
+				CachedHunterMaxWalkSpeeds.Add(HunterCharacter, MovementComponent->MaxWalkSpeed);
+				MovementComponent->MaxWalkSpeed = 0.0f;
+			}
+		}
 	}
-
-	APawn* HunterPawn = HunterController->GetPawn();
-	if (!HunterPawn)
-	{
-		return;
-	}
-
-	ACharacter* HunterCharacter = Cast<ACharacter>(HunterPawn);
-	if (!HunterCharacter)
-	{
-		return;
-	}
-
-	UCharacterMovementComponent* MovementComponent = HunterCharacter->GetCharacterMovement();
-	if (!MovementComponent)
-	{
-		return;
-	}
-
-	CachedHunterMaxWalkSpeed = MovementComponent->MaxWalkSpeed;
-	MovementComponent->MaxWalkSpeed = 0.0f;
-	bHunterMovementLocked = true;
+	bHunterMovementLocked = CachedHunterMaxWalkSpeeds.Num() > 0;
 
 	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Hunter movement locked (Preparation phase)."));
 }
@@ -223,21 +251,16 @@ void ASupermarketMayhemGameMode::StartResultPhase()
 
 	UnlockHunterMovement();
 
-	if (HiderController)
+	bool bAnyHiderEscaped = false;
+	for (ASupermarketMayhemPlayerState* HiderPlayerState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hider))
 	{
-		if (ASupermarketMayhemPlayerState* HiderPlayerState = HiderController->GetPlayerState<ASupermarketMayhemPlayerState>())
+		if (!HiderPlayerState->IsEliminated())
 		{
-			if (!HiderPlayerState->IsEliminated())
-			{
-				UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] %s escaped!"), *GetNameSafe(HiderPlayerState));
-
-				if (GEngine)
-				{
-					GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, FString::Printf(TEXT("Hider escaped! (%s)"), *GetNameSafe(HiderPlayerState)));
-				}
-			}
+			bAnyHiderEscaped = true;
+			UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] %s escaped!"), *GetNameSafe(HiderPlayerState));
 		}
 	}
+	if (bAnyHiderEscaped && GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Hider(s) escaped!"));
 
 	UWorld* World = GetWorld();
 	if (!World)
@@ -304,39 +327,33 @@ void ASupermarketMayhemGameMode::EliminateHider(ASupermarketMayhemPlayerState* T
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("%s eliminated!"), *GetNameSafe(TargetPlayerState)));
 	}
 
-	// The round system is currently hardcoded to a single Hider (HiderController,
-	// see Docs/DECISIONS.md O003), so eliminating the one valid Hider target
-	// above always means "all Hiders are eliminated" - end the Hunt immediately.
-	StartResultPhase();
+	bool bAnyHiderRemains = false;
+	for (const ASupermarketMayhemPlayerState* HiderState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hider))
+	{
+		if (!HiderState->IsEliminated())
+		{
+			bAnyHiderRemains = true;
+			break;
+		}
+	}
+	if (!bAnyHiderRemains) StartResultPhase();
 }
 
 void ASupermarketMayhemGameMode::ResetHiderRoundState()
 {
-	if (!HiderController)
+	for (ASupermarketMayhemPlayerState* HiderPlayerState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hider))
 	{
-		return;
-	}
-
-	ASupermarketMayhemPlayerState* HiderPlayerState = HiderController->GetPlayerState<ASupermarketMayhemPlayerState>();
-	if (!HiderPlayerState)
-	{
-		return;
-	}
-
-	if (ASupermarketMayhemCharacter* HiderCharacter = Cast<ASupermarketMayhemCharacter>(HiderPlayerState->GetPawn()))
-	{
-		if (USupermarketMayhemDisguiseComponent* DisguiseComponent = HiderCharacter->GetDisguiseComponent())
+		if (ASupermarketMayhemCharacter* HiderCharacter = Cast<ASupermarketMayhemCharacter>(HiderPlayerState->GetPawn()))
 		{
-			DisguiseComponent->ForceRemoveDisguise();
-		}
+			if (USupermarketMayhemDisguiseComponent* DisguiseComponent = HiderCharacter->GetDisguiseComponent())
+			{
+				DisguiseComponent->ForceRemoveDisguise();
+			}
 
-		if (HiderPlayerState->IsEliminated())
-		{
-			HiderCharacter->ClearEliminatedState();
+			if (HiderPlayerState->IsEliminated()) HiderCharacter->ClearEliminatedState();
 		}
+		HiderPlayerState->SetEliminationState(false);
 	}
-
-	HiderPlayerState->SetEliminationState(false);
 }
 
 void ASupermarketMayhemGameMode::UpdateRoundTimeRemaining()

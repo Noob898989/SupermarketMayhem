@@ -44,6 +44,11 @@ Friends can create a private session. Fewer than 8 players may be allowed in the
 - Steps 1-2 ("Match found", "Load map") are not implemented yet - players
   currently join directly into Lvl_SupermarketBlockout via PIE; there is
   no matchmaking (Phase 7, Docs/ROADMAP.md, still "Not started").
+- The GameMode now uses the connected PlayerState collection and an ordered,
+  configurable role-slot list. Its default `[Hider, Hunter]` preserves the
+  two-player loop. For a larger configured roster, all Hiders are reset
+  together and the Hunt ends on elimination only when no Hider remains.
+  The role distribution for 3-8 players remains a game-design question.
 
 ## Hider play
 Hiders choose plausible props, hide, observe, reposition carefully and exploit visual/environmental clutter.

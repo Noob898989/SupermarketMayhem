@@ -63,6 +63,21 @@ void ASupermarketMayhemCustomerSpawnManager::BeginResultPhase()
 	}
 }
 
+void ASupermarketMayhemCustomerSpawnManager::ReportNoise(FVector NoiseLocation, float Intensity, float HearingRange)
+{
+	if (!HasAuthority() || !FMath::IsFinite(Intensity) || !FMath::IsFinite(HearingRange) || HearingRange <= 0.0f)
+	{
+		return;
+	}
+	for (ASupermarketMayhemCustomer* Customer : Customers)
+	{
+		if (IsValid(Customer))
+		{
+			Customer->ReportNoiseToCustomer(NoiseLocation, Intensity, HearingRange);
+		}
+	}
+}
+
 void ASupermarketMayhemCustomerSpawnManager::SpawnInitialCustomers()
 {
 	if (bPopulationSpawned || !HasAuthority() || !GetWorld())
@@ -70,6 +85,10 @@ void ASupermarketMayhemCustomerSpawnManager::SpawnInitialCustomers()
 		return;
 	}
 	bPopulationSpawned = true;
+	if (InitialCustomerCount <= 0)
+	{
+		return;
+	}
 
 	TArray<AActor*> SpawnPoints;
 	if (!CustomerSpawnTag.IsNone())

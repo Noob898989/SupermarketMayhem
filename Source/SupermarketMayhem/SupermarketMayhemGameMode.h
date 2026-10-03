@@ -43,6 +43,9 @@ public:
 	 */
 	void EliminateHider(ASupermarketMayhemPlayerState* TargetPlayerState);
 
+	/** Delivers an accepted gameplay noise event to the server-owned customer population. */
+	void ReportCustomerNoise(FVector NoiseLocation, float Intensity, float HearingRange);
+
 protected:
 	/** Duration of the Preparation phase, in seconds. */
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round")

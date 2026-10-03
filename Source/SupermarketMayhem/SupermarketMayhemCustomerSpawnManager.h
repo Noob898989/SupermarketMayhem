@@ -24,6 +24,7 @@ public:
 	void BeginPreparationPhase();
 	void BeginHuntPhase();
 	void BeginResultPhase();
+	void ReportNoise(FVector NoiseLocation, float Intensity, float HearingRange);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers", meta = (ClampMin = "0", ClampMax = "32"))

@@ -77,9 +77,39 @@ void ASupermarketMayhemCustomerAIController::SetBehaviorEnabled(bool bEnabled, b
 	{
 		StopMovement();
 		LastDestination = FVector::ZeroVector;
+		LastNoiseReactionTime = -1.0f;
 	}
 	SetCustomerState(ESupermarketMayhemCustomerState::Idle);
 	ScheduleNextDestination(GetRandomIdleDuration());
+}
+
+void ASupermarketMayhemCustomerAIController::ReactToNoise(float ReactionStrength)
+{
+	if (!HasAuthority() || !bBehaviorEnabled || !Customer.IsValid() || ReactionStrength <= 0.0f ||
+		Customer->GetCustomerState() == ESupermarketMayhemCustomerState::Paused)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World || (LastNoiseReactionTime >= 0.0f && World->GetTimeSeconds() - LastNoiseReactionTime < 0.75f))
+	{
+		return;
+	}
+	LastNoiseReactionTime = World->GetTimeSeconds();
+
+	// Small sounds do not interrupt an NPC already walking. A strong sound
+	// abandons the current destination and resumes the normal customer route.
+	if (Customer->GetCustomerState() == ESupermarketMayhemCustomerState::Walk && ReactionStrength < 0.65f)
+	{
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(BehaviorTimerHandle);
+	StopMovement();
+	LastDestination = Customer->GetActorLocation();
+	SetCustomerState(ESupermarketMayhemCustomerState::Idle);
+	ScheduleNextDestination(FMath::FRandRange(0.15f, 0.45f));
 }
 
 void ASupermarketMayhemCustomerAIController::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
@@ -159,9 +189,14 @@ void ASupermarketMayhemCustomerAIController::ChooseAndMoveToDestination()
 				FNavLocation ProjectedLocation;
 				if (NavigationSystem->ProjectPointToNavigation(Candidate->GetActorLocation(), ProjectedLocation))
 				{
-					Destination = ProjectedLocation.Location;
-					bFoundDestination = true;
-					break;
+					UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(
+						World, CustomerCharacter->GetActorLocation(), ProjectedLocation.Location, CustomerCharacter);
+					if (Path && Path->IsValid() && !Path->IsPartial())
+					{
+						Destination = ProjectedLocation.Location;
+						bFoundDestination = true;
+						break;
+					}
 				}
 			}
 		}

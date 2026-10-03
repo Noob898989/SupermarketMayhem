@@ -86,19 +86,36 @@ still need runtime PIE verification; see Docs/ROADMAP.md, Phase 4.
 The first customer foundation spawns four server-owned NPCs when the first
 round enters Preparation (GameMode defaults are configurable: 0-8, initial 4).
 Customers use a replicated mannequin Character and move under a server-only
-AIController. The controller cycles through Idle, Walk and Shop states using
-timers and chooses tagged level destinations or random reachable NavMesh
-locations. It pauses during Result and resets for the next Preparation.
+AIController. The timer-driven flow cycles through Idle, Walk and Shop, with
+independent randomized idle and shopping durations. The controller prefers
+reachable level actors tagged `CustomerDestination` and can filter those by
+the profile's `PreferredDestinationTag`; when no suitable tagged destination
+is available, it selects a random reachable NavMesh location. Result pauses
+behavior, and Preparation resets the state and timers.
 
 Customer behavior can be configured with an optional Data Asset profile for
-movement speed, idle/shopping duration, preferred destination tag and future
-reaction sensitivity. Without an asset, the base `DefaultCustomer` profile is
+movement speed, idle/shopping duration, preferred destination tag and reaction
+sensitivity. Without an asset, the base `DefaultCustomer` profile is
 used. Place level actors tagged `CustomerSpawn` and `CustomerDestination` to
-author spawn and shopping locations; PlayerStarts are the spawn fallback.
+author spawn and shopping locations; add a second actor tag matching
+`PreferredDestinationTag` to specialize a profile. Tagged destinations are
+checked for a complete NavMesh path. PlayerStarts are the spawn fallback.
 The blockout now has a NavMeshBoundsVolume and dynamic Recast generation.
 A headless two-client server smoke test confirmed four NPC spawns and a first
 navigation request for each customer; visual movement and client-side state
 replication still require PIE verification.
+
+Server-confirmed Hunter shots also report noise (including a valid miss) to
+the server customer manager. NPCs combine intensity, distance falloff and
+their profile sensitivity; stronger nearby sounds can interrupt a walk and
+send them toward a different reachable point, after which their normal
+shopping cycle continues. Short per-customer cooldowns coalesce rapid reports.
+The Manny Unarmed animation blueprint supplies movement and idle presentation;
+Shop currently uses its stationary idle pose, with no dedicated shopping
+animation. A fresh headless server/two-client smoke test reached Hunt with four
+server-spawned NPCs and accepted navigation requests for all four. Actual
+noise reactions, visible locomotion and client-side NPC replication still need
+PIE verification.
 
 ## Future ideas
 Possible later systems:

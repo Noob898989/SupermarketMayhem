@@ -186,7 +186,7 @@ protected:
 	void HideMuzzleFlash();
 
 	/** Performs server-side role, round, equipment and ECC_Camera hit validation. */
-	void ResolveFireRequest();
+	bool ResolveFireRequest();
 
 	/** Resolves a target using the owning Hunter's server-side camera view. */
 	ASupermarketMayhemCharacter* FindTargetedCharacter() const;

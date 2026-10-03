@@ -173,8 +173,8 @@ intentionally not being reordered to match actual implementation history
 - this note records the deviation instead.
 
 ## Phase 6 - Living supermarket
-Status: In Progress (NPC foundation implemented, Editor and Game targets
-compiled; runtime validation pending)
+Status: In Progress (NPC foundation and customer behavior implemented;
+Editor/Game build and network runtime validation pending)
 - `ASupermarketMayhemCustomer` provides a replicated Character with a
   replicated `Idle`, `Walk`, `Shop` or `Paused` state and a `DefaultCustomer`
   type. It uses the existing simple Manny mesh/Unarmed animation assets.
@@ -192,16 +192,31 @@ compiled; runtime validation pending)
   to level PlayerStarts. The GameMode exposes the count, class, profile and
   tags for configuration.
 - Customers are enabled/reset for Preparation, continue through Hunt, pause
-  during Result and reset at the next Preparation. A server-only noise hook
-  is present without a reaction behavior.
+  during Result and reset at the next Preparation. Independent randomized
+  idle/shop timers create varied start phases and shopping stays before each
+  customer picks another destination. Preferred destination tags filter the
+  shared destination-tag set; tagged points are projected and path-checked,
+  with random reachable NavMesh locations as fallback.
+- Noise events are delivered only by server gameplay code. After an equipped
+  Hunter passes server fire validation and the server camera trace runs, a
+  shot (including a miss) reports noise to the server customer manager.
+  Customers apply profile sensitivity, distance falloff and a short reaction
+  cooldown; strong sounds interrupt walking, select a different destination,
+  and then rejoin the normal Shop/Idle flow. Result-phase events are ignored.
+- The existing Manny simple mesh and Unarmed animation blueprint remain in
+  use. Character movement drives locomotion; Shop is a stationary visit using
+  the animation blueprint's idle presentation. No dedicated shopping
+  animation asset was introduced.
 - Added a `NavMeshBoundsVolume` to `Lvl_SupermarketBlockout` through the UE
   Editor scripting workflow, and enabled dynamic Recast generation for the
   small blockout. The single PlayerStart is the spawn fallback; authored
   destination tags remain optional.
-- UE 5.8 Editor and Game targets compile. A headless local server with two
-  clients assigned roles, entered Preparation, spawned all 4 NPCs, observed
-  all four accept a navigation request, and entered Hunt. This was not PIE;
-  visual behavior and client-side NPC movement/state replication remain open.
+- UE 5.8 Editor and Game targets now compile with the behavior expansion. A
+  fresh headless local server/two-client smoke run assigned roles, entered
+  Preparation, spawned four NPCs, observed all four accept a navigation
+  request, and entered Hunt. This verifies startup and initial server-side
+  navigation, not visual movement, client-side replication, or an actual
+  Hunter shot/noise reaction. Those remain open for PIE/runtime validation.
 - No project Automation Tests were present. The level scripting commandlet
   saved the NavMesh bounds successfully but returned exit code 1 because of a
   pre-existing Ensure in the protected local DisguiseComponent.

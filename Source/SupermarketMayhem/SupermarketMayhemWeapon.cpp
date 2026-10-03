@@ -139,7 +139,16 @@ void ASupermarketMayhemWeapon::ServerRequestFire_Implementation()
 	--CurrentAmmo;
 	ForceNetUpdate();
 	MulticastPlayFireFeedback();
-	ResolveFireRequest();
+	if (ResolveFireRequest())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (ASupermarketMayhemGameMode* MayhemGameMode = World->GetAuthGameMode<ASupermarketMayhemGameMode>())
+			{
+				MayhemGameMode->ReportCustomerNoise(GetActorLocation(), 1.0f, 2200.0f);
+			}
+		}
+	}
 }
 
 void ASupermarketMayhemWeapon::ServerRequestReload_Implementation()
@@ -152,7 +161,7 @@ void ASupermarketMayhemWeapon::ServerRequestReload_Implementation()
 	StartReload();
 }
 
-void ASupermarketMayhemWeapon::ResolveFireRequest()
+bool ASupermarketMayhemWeapon::ResolveFireRequest()
 {
 	UWorld* World = GetWorld();
 	const ASupermarketMayhemGameState* MayhemGameState = World
@@ -161,7 +170,15 @@ void ASupermarketMayhemWeapon::ResolveFireRequest()
 
 	if (!MayhemGameState || MayhemGameState->GetCurrentRoundState() != ESupermarketMayhemRoundState::Hunt)
 	{
-		return;
+		return false;
+	}
+
+	// A valid server trace is a real shot even when it misses. Its noise is
+	// emitted only after the authoritative view and round checks have run.
+	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	if (!OwningCharacter || !OwningCharacter->GetFirstPersonCameraComponent())
+	{
+		return false;
 	}
 
 	ASupermarketMayhemCharacter* TargetCharacter = FindTargetedCharacter();
@@ -172,13 +189,14 @@ void ASupermarketMayhemWeapon::ResolveFireRequest()
 	if (!TargetPlayerState || TargetPlayerState->GetCurrentRole() != ESupermarketMayhemPlayerRole::Hider ||
 		TargetPlayerState->IsEliminated())
 	{
-		return;
+		return true;
 	}
 
 	if (ASupermarketMayhemGameMode* MayhemGameMode = World->GetAuthGameMode<ASupermarketMayhemGameMode>())
 	{
 		MayhemGameMode->EliminateHider(TargetPlayerState);
 	}
+	return true;
 }
 
 bool ASupermarketMayhemWeapon::ValidateHunterAction() const

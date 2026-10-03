@@ -39,6 +39,23 @@ ASupermarketMayhemCustomerSpawnManager* ASupermarketMayhemGameMode::EnsureCustom
 	return CustomerSpawnManager;
 }
 
+void ASupermarketMayhemGameMode::ReportCustomerNoise(FVector NoiseLocation, float Intensity, float HearingRange)
+{
+	if (!HasAuthority() || !FMath::IsFinite(Intensity) || !FMath::IsFinite(HearingRange) || HearingRange <= 0.0f)
+	{
+		return;
+	}
+	const ASupermarketMayhemGameState* RoundState = GetSupermarketMayhemGameState();
+	if (!RoundState || RoundState->GetCurrentRoundState() != ESupermarketMayhemRoundState::Hunt)
+	{
+		return;
+	}
+	if (ASupermarketMayhemCustomerSpawnManager* Manager = EnsureCustomerSpawnManager())
+	{
+		Manager->ReportNoise(NoiseLocation, Intensity, HearingRange);
+	}
+}
+
 ASupermarketMayhemGameState* ASupermarketMayhemGameMode::GetSupermarketMayhemGameState() const
 {
 	return GetGameState<ASupermarketMayhemGameState>();

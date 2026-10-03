@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "SupermarketMayhemCustomerAIController.h"
+#include "SupermarketMayhemCustomerData.h"
 
 ASupermarketMayhemCustomer::ASupermarketMayhemCustomer()
 {
@@ -109,10 +110,32 @@ void ASupermarketMayhemCustomer::SetCustomerBehaviorEnabled(bool bEnabled, bool 
 	}
 }
 
-void ASupermarketMayhemCustomer::ReportNoiseToCustomer(FVector NoiseLocation, float Intensity)
+void ASupermarketMayhemCustomer::ReportNoiseToCustomer(FVector NoiseLocation, float Intensity, float HearingRange)
 {
-	if (HasAuthority())
+	if (!HasAuthority() || !FMath::IsFinite(Intensity) || !FMath::IsFinite(HearingRange) ||
+		CustomerState == ESupermarketMayhemCustomerState::Paused || HearingRange <= 0.0f)
 	{
-		OnCustomerNoiseReported(NoiseLocation, FMath::Max(0.0f, Intensity));
+		return;
+	}
+
+	const float Sensitivity = FMath::Clamp(CustomerData ? CustomerData->ReactionSensitivity : 0.5f, 0.0f, 1.0f);
+	const float Distance = FVector::Distance(GetActorLocation(), NoiseLocation);
+	const float EffectiveRange = HearingRange * (0.5f + Sensitivity);
+	if (Distance > EffectiveRange)
+	{
+		return;
+	}
+
+	const float Strength = FMath::Clamp(Intensity, 0.0f, 1.0f) * (1.0f - Distance / EffectiveRange);
+	const float MinimumStrength = 0.15f + (1.0f - Sensitivity) * 0.45f;
+	if (Strength < MinimumStrength)
+	{
+		return;
+	}
+
+	OnCustomerNoiseReported(NoiseLocation, Strength);
+	if (ASupermarketMayhemCustomerAIController* CustomerController = Cast<ASupermarketMayhemCustomerAIController>(GetController()))
+	{
+		CustomerController->ReactToNoise(Strength);
 	}
 }

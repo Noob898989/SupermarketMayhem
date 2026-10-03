@@ -17,6 +17,8 @@ class SUPERMARKETMAYHEM_API ASupermarketMayhemCustomerAIController : public AAIC
 public:
 	ASupermarketMayhemCustomerAIController();
 	void SetBehaviorEnabled(bool bEnabled, bool bResetState);
+	/** Reacts to an accepted server-side noise event by selecting a different destination. */
+	void ReactToNoise(float ReactionStrength);
 
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
@@ -35,4 +37,5 @@ private:
 	FVector LastDestination = FVector::ZeroVector;
 	bool bBehaviorEnabled = false;
 	bool bHasLoggedNavigationStatus = false;
+	float LastNoiseReactionTime = -1.0f;
 };

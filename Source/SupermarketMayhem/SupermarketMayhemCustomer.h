@@ -20,9 +20,9 @@ public:
 	/** Server-only behavior switch used by the round-owned spawn manager. */
 	void SetCustomerBehaviorEnabled(bool bEnabled, bool bResetState = false);
 
-	/** Server-side extension hook for future sound/chaos reactions. This does not implement a reaction policy. */
+	/** Server-side noise event. Nearby customers may re-route according to their profile sensitivity. */
 	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Customer|Reactions")
-	void ReportNoiseToCustomer(FVector NoiseLocation, float Intensity);
+	void ReportNoiseToCustomer(FVector NoiseLocation, float Intensity, float HearingRange = 2200.0f);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Supermarket Mayhem|Customer|Reactions")
 	void OnCustomerNoiseReported(FVector NoiseLocation, float Intensity);

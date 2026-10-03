@@ -87,6 +87,17 @@ NPCs spawned and each accepted a first navigation request). PIE validation of
 client-side NPC visibility/movement and replicated customer state remains
 open.
 
+After server weapon validation and execution of the Hunter's server camera
+trace, the weapon asks the authoritative GameMode to report a noise event.
+Dry-fire, rejected fire requests and local cosmetic feedback do not emit NPC
+noise. The server manager forwards the event to its owned NPC list; each NPC
+checks distance/profile sensitivity and asks its server AIController to
+reroute. No client RPC or client-side AI decision is involved. The noise-to-
+reaction path and client presentation remain pending runtime/PIE validation.
+A fresh headless server/two-client run verified role assignment, Preparation,
+four server-side customer spawns, initial navigation requests for each and
+entry into Hunt; it did not issue fire requests or verify noise reactions.
+
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.
 

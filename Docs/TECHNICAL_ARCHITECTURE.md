@@ -64,20 +64,29 @@ Paused state are replicated. Its `ASupermarketMayhemCustomerAIController`
 exists and runs behavior only on the server. Timer callbacks transition
 between states; destinations use tagged actors or random reachable NavMesh
 points. No AI tick or per-movement RPC is added. The optional
-`USupermarketMayhemCustomerData` asset configures speed, idle/shop durations,
-preferred destination tag and reaction sensitivity; base defaults support a
-single `DefaultCustomer` without requiring an authored Data Asset.
+`USupermarketMayhemCustomerData` asset configures speed, idle/shop duration
+ranges, preferred destination tag and reaction sensitivity; base defaults
+support a single `DefaultCustomer` without requiring an authored Data Asset.
+Independent randomized timers produce different customer start/visit phases.
+Tagged destinations are projected to NavMesh and accepted only when a full
+path exists; the controller falls back to a random reachable NavMesh point.
 
 Round hooks enable/reset customers during Preparation, keep them moving
-during Hunt and stop movement/behavior during Result. `ReportNoiseToCustomer`
-is a server-checked extension hook only; no flee or investigate policy is
-implemented. The active blockout's NavMesh coverage, level tags, animation
-appearance and client replication still need PIE verification. The blockout
-now contains a `NavMeshBoundsVolume`, with dynamic Recast generation enabled
-for this small prototype map. A headless server/two-client smoke test
-confirmed four customer spawns and accepted initial navigation requests for
-all four; the editor commandlet saved the level change but exited nonzero on
-the existing protected DisguiseComponent Ensure.
+during Hunt and stop movement/behavior during Result. After an accepted Hunter
+fire request passes server checks and the server camera trace runs, the weapon
+reports a noise event through GameMode to the existing customer manager. The
+manager forwards it to its server-owned NPC list. Each NPC applies distance
+falloff, configurable reaction sensitivity and a short cooldown; the server
+AIController may interrupt walking for strong events and select another
+destination. The controller clears behavior timers on pause/reset, and no
+additional AI Tick or client RPC is used. The existing Manny Unarmed
+animation blueprint supplies locomotion; Shop uses stationary idle. NavMesh
+coverage, target placement, animation appearance, client replication and the
+new noise reaction still need PIE/runtime verification. A fresh headless
+server/two-client smoke test after this change confirmed role assignment,
+Preparation, four customer spawns, initial navigation requests for all four,
+and transition to Hunt. It did not exercise a weapon fire request or the new
+noise reaction path.
 
 ## Content
 Products and weapons should be data-driven where useful so new content does not require rewriting core systems.

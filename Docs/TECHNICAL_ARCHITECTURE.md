@@ -29,6 +29,27 @@ Design core gameplay for replication and server authority from the beginning.
 
 Avoid client-trusting shortcuts that would require a rewrite later.
 
+### Hunter weapon presentation
+`ASupermarketMayhemWeapon` remains the authority for equipment, fire requests,
+ammo and reload timing. Fire requests are validated on the server against the
+owner's role, elimination state, Hunt phase, reload state, ammo and the
+Character's equipped-weapon reference before ammo is spent and the existing
+server trace/elimination path runs. Fire during reload/empty ammo, reload
+outside Hunt and requests from an unequipped/stale weapon are rejected.
+Unequip and Result cancel the server reload timer; Preparation resets ammo
+and reload state.
+
+The weapon actor and its gameplay fields replicate. Its first-person and
+third-person mesh components are cosmetic local subobjects and are not
+replicated: each instance attaches them to the owner's camera and character
+hand respectively, with owner-only visibility rules. Equip and reload
+presentation follows the existing replicated flags. Accepted fire uses an
+unreliable server multicast for transient montage, sound and muzzle-light
+feedback; small recoil animates only the owner's weapon mesh and does not
+modify camera aim or server hit traces. Dry-fire feedback is an owner-only
+cosmetic response to a server-rejected empty shot. Presentation asset
+compatibility and multiplayer behavior still require PIE verification.
+
 ## Content
 Products and weapons should be data-driven where useful so new content does not require rewriting core systems.
 

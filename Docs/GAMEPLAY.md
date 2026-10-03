@@ -72,8 +72,15 @@ reload is rejected. Ammo and reload state are server-owned and replicated.
 The weapon uses the existing pistol static mesh for the Hunter's owner-only
 camera view and a third-person hand-mounted view. Both are cosmetic components
 driven by the replicated equipped state; their visual attachments do not
-control server gameplay. Ammo, reload, elimination and this presentation still
-need runtime PIE verification; see Docs/ROADMAP.md, Phase 4.
+control server gameplay. Existing pistol animations provide cosmetic fire,
+reload, equip and dry-fire feedback when compatible with the character's
+animation instances. Fire uses its montage; reload, equip and dry-fire
+sequences play through local dynamic montages. Accepted fire sends a
+server-originated cosmetic event for audio and a short muzzle point-light
+pulse. Owner recoil affects only the
+weapon mesh. An empty shot is rejected by the server and can return a
+throttled owner-only cue. Ammo, reload, elimination, animation and presentation
+still need runtime PIE verification; see Docs/ROADMAP.md, Phase 4.
 
 ## Future ideas
 Possible later systems:

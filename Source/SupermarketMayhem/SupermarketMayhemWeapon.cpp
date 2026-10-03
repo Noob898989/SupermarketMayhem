@@ -2,14 +2,19 @@
 
 #include "SupermarketMayhemWeapon.h"
 
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Animation/AnimSequence.h"
 #include "Camera/CameraComponent.h"
 #include "CollisionQueryParams.h"
+#include "Components/PointLightComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/HitResult.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 #include "SupermarketMayhemCharacter.h"
@@ -27,6 +32,16 @@ ASupermarketMayhemWeapon::ASupermarketMayhemWeapon()
 	{
 		WeaponMeshAsset = PistolMesh.Object;
 	}
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> PistolFireMontage(TEXT("/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Fire_Montage.MM_Pistol_Fire_Montage"));
+	if (PistolFireMontage.Succeeded()) FireMontage = PistolFireMontage.Object;
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> PistolReloadAnimation(TEXT("/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Reload.MM_Pistol_Reload"));
+	if (PistolReloadAnimation.Succeeded()) ReloadAnimation = PistolReloadAnimation.Object;
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> PistolEquipAnimation(TEXT("/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_Equip.MM_Pistol_Equip"));
+	if (PistolEquipAnimation.Succeeded()) EquipAnimation = PistolEquipAnimation.Object;
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> PistolDryFireAnimation(TEXT("/Game/Characters/Mannequins/Anims/Pistol/MM_Pistol_DryFire.MM_Pistol_DryFire"));
+	if (PistolDryFireAnimation.Succeeded()) DryFireAnimation = PistolDryFireAnimation.Object;
+	static ConstructorHelpers::FObjectFinder<USoundBase> TemplateFireSound(TEXT("/Game/Weapons/GrenadeLauncher/Audio/FirstPersonTemplateWeaponFire02.FirstPersonTemplateWeaponFire02"));
+	if (TemplateFireSound.Succeeded()) FireSound = TemplateFireSound.Object;
 
 	FirstPersonWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FirstPersonWeaponMesh"));
 	FirstPersonWeaponMesh->SetupAttachment(RootComponent);
@@ -42,11 +57,29 @@ ASupermarketMayhemWeapon::ASupermarketMayhemWeapon()
 	ThirdPersonWeaponMesh->SetGenerateOverlapEvents(false);
 	ThirdPersonWeaponMesh->SetOwnerNoSee(true);
 	ThirdPersonWeaponMesh->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::WorldSpaceRepresentation;
+	ThirdPersonWeaponMesh->SetCastShadow(true);
 
 	FirstPersonWeaponMesh->SetStaticMesh(WeaponMeshAsset);
 	ThirdPersonWeaponMesh->SetStaticMesh(WeaponMeshAsset);
 	FirstPersonWeaponMesh->SetVisibility(false);
 	ThirdPersonWeaponMesh->SetVisibility(false);
+	FirstPersonMuzzleFlash = CreateDefaultSubobject<UPointLightComponent>(TEXT("FirstPersonMuzzleFlash"));
+	FirstPersonMuzzleFlash->SetupAttachment(FirstPersonWeaponMesh);
+	FirstPersonMuzzleFlash->SetRelativeLocation(MuzzleOffset);
+	FirstPersonMuzzleFlash->SetIntensity(6000.0f);
+	FirstPersonMuzzleFlash->SetAttenuationRadius(180.0f);
+	FirstPersonMuzzleFlash->SetLightColor(FLinearColor(1.0f, 0.58f, 0.22f));
+	FirstPersonMuzzleFlash->SetCastShadows(false);
+	FirstPersonMuzzleFlash->SetVisibility(false);
+
+	ThirdPersonMuzzleFlash = CreateDefaultSubobject<UPointLightComponent>(TEXT("ThirdPersonMuzzleFlash"));
+	ThirdPersonMuzzleFlash->SetupAttachment(ThirdPersonWeaponMesh);
+	ThirdPersonMuzzleFlash->SetRelativeLocation(MuzzleOffset);
+	ThirdPersonMuzzleFlash->SetIntensity(6000.0f);
+	ThirdPersonMuzzleFlash->SetAttenuationRadius(180.0f);
+	ThirdPersonMuzzleFlash->SetLightColor(FLinearColor(1.0f, 0.58f, 0.22f));
+	ThirdPersonMuzzleFlash->SetCastShadows(false);
+	ThirdPersonMuzzleFlash->SetVisibility(false);
 
 	bReplicates = true;
 	SetReplicateMovement(false);
@@ -89,13 +122,23 @@ void ASupermarketMayhemWeapon::RequestReload()
 
 void ASupermarketMayhemWeapon::ServerRequestFire_Implementation()
 {
-	if (!ValidateHunterAction() || bIsReloading || CurrentAmmo <= 0)
+	if (!ValidateHunterAction() || bIsReloading)
 	{
+		return;
+	}
+	if (CurrentAmmo <= 0)
+	{
+		if (UWorld* World = GetWorld(); World && World->GetTimeSeconds() >= NextDryFireFeedbackTime)
+		{
+			NextDryFireFeedbackTime = World->GetTimeSeconds() + 0.15f;
+			ClientPlayDryFireFeedback();
+		}
 		return;
 	}
 
 	--CurrentAmmo;
 	ForceNetUpdate();
+	MulticastPlayFireFeedback();
 	ResolveFireRequest();
 }
 
@@ -149,7 +192,7 @@ bool ASupermarketMayhemWeapon::ValidateHunterAction() const
 		? World->GetGameState<ASupermarketMayhemGameState>()
 		: nullptr;
 
-	return HasAuthority() && bIsEquipped && PlayerState &&
+	return HasAuthority() && bIsEquipped && PlayerState && OwningCharacter->GetEquippedWeapon() == this &&
 		PlayerState->GetCurrentRole() == ESupermarketMayhemPlayerRole::Hunter &&
 		!PlayerState->IsEliminated() && MayhemGameState &&
 		MayhemGameState->GetCurrentRoundState() == ESupermarketMayhemRoundState::Hunt;
@@ -164,6 +207,7 @@ void ASupermarketMayhemWeapon::StartReload()
 	}
 
 	bIsReloading = true;
+	UpdateReloadPresentation(true);
 	ForceNetUpdate();
 	World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &ASupermarketMayhemWeapon::CompleteReload, FMath::Max(ReloadDuration, 0.05f), false);
 }
@@ -181,6 +225,7 @@ void ASupermarketMayhemWeapon::CompleteReload()
 	}
 
 	bIsReloading = false;
+	UpdateReloadPresentation(false);
 	ForceNetUpdate();
 }
 
@@ -196,6 +241,7 @@ void ASupermarketMayhemWeapon::CancelReload()
 		World->GetTimerManager().ClearTimer(ReloadTimerHandle);
 	}
 	bIsReloading = false;
+	UpdateReloadPresentation(false);
 	ForceNetUpdate();
 }
 
@@ -224,6 +270,11 @@ void ASupermarketMayhemWeapon::EquipTo(ASupermarketMayhemCharacter* Character)
 	AttachToActor(Character, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	bIsEquipped = true;
 	UpdateWeaponPresentation();
+	PlayCosmeticSequence(EquipAnimation);
+	if (EquipSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, EquipSound, GetActorLocation());
+	}
 	ForceNetUpdate();
 }
 
@@ -246,17 +297,48 @@ void ASupermarketMayhemWeapon::Unequip()
 void ASupermarketMayhemWeapon::OnRep_EquippedState()
 {
 	UpdateWeaponPresentation();
+	if (bIsEquipped)
+	{
+		PlayCosmeticSequence(EquipAnimation);
+		if (EquipSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, EquipSound, GetActorLocation());
+		}
+	}
+}
+
+void ASupermarketMayhemWeapon::OnRep_ReloadingState()
+{
+	UpdateReloadPresentation(bIsReloading);
+}
+
+void ASupermarketMayhemWeapon::ClientPlayDryFireFeedback_Implementation()
+{
+	PlayDryFireFeedback();
 }
 
 void ASupermarketMayhemWeapon::UpdateWeaponPresentation()
 {
-	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	if (OwningCharacter)
+	{
+		PresentationCharacter = OwningCharacter;
+	}
 	if (!OwningCharacter || !bIsEquipped)
 	{
+		UpdateReloadPresentation(false);
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(MuzzleFlashTimerHandle);
+			World->GetTimerManager().ClearTimer(RecoilReturnTimerHandle);
+		}
+		CurrentRecoilPitch = 0.0f;
+		HideMuzzleFlash();
 		FirstPersonWeaponMesh->SetVisibility(false);
 		ThirdPersonWeaponMesh->SetVisibility(false);
 		FirstPersonWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 		ThirdPersonWeaponMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		PresentationCharacter.Reset();
 		return;
 	}
 
@@ -268,6 +350,7 @@ void ASupermarketMayhemWeapon::UpdateWeaponPresentation()
 		FirstPersonWeaponMesh->SetRelativeTransform(FirstPersonMeshTransform);
 		FirstPersonWeaponMesh->SetStaticMesh(WeaponMeshAsset);
 		FirstPersonWeaponMesh->SetVisibility(true);
+		FirstPersonMuzzleFlash->SetRelativeLocation(MuzzleOffset);
 	}
 
 	if (USkeletalMeshComponent* CharacterMesh = OwningCharacter->GetMesh())
@@ -276,7 +359,191 @@ void ASupermarketMayhemWeapon::UpdateWeaponPresentation()
 		ThirdPersonWeaponMesh->SetRelativeTransform(ThirdPersonMeshTransform);
 		ThirdPersonWeaponMesh->SetStaticMesh(WeaponMeshAsset);
 		ThirdPersonWeaponMesh->SetVisibility(true);
+		ThirdPersonMuzzleFlash->SetRelativeLocation(MuzzleOffset);
 	}
+}
+
+void ASupermarketMayhemWeapon::MulticastPlayFireFeedback_Implementation()
+{
+	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	const bool bIsLocalOwner = OwningCharacter && OwningCharacter->IsLocallyControlled();
+	if (FirstPersonMuzzleFlash) FirstPersonMuzzleFlash->SetVisibility(bIsLocalOwner);
+	if (ThirdPersonMuzzleFlash) ThirdPersonMuzzleFlash->SetVisibility(!bIsLocalOwner);
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(MuzzleFlashTimerHandle);
+		World->GetTimerManager().SetTimer(MuzzleFlashTimerHandle, this, &ASupermarketMayhemWeapon::HideMuzzleFlash,
+			FMath::Max(MuzzleFlashDuration, 0.01f), false);
+	}
+
+	PlayCosmeticMontage(FireMontage);
+	if (FireSound)
+	{
+		const USceneComponent* FlashOrigin = bIsLocalOwner
+			? Cast<USceneComponent>(FirstPersonMuzzleFlash)
+			: Cast<USceneComponent>(ThirdPersonMuzzleFlash);
+		UGameplayStatics::PlaySoundAtLocation(this, FireSound, FlashOrigin ? FlashOrigin->GetComponentLocation() : GetActorLocation());
+	}
+	if (bIsLocalOwner)
+	{
+		StartRecoilRecovery();
+	}
+}
+
+void ASupermarketMayhemWeapon::PlayCosmeticMontage(UAnimMontage* Montage, float PlayRate)
+{
+	if (!Montage)
+	{
+		return;
+	}
+	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	if (!OwningCharacter)
+	{
+		return;
+	}
+	if (USkeletalMeshComponent* FirstPersonMesh = OwningCharacter->GetFirstPersonMesh())
+	{
+		if (UAnimInstance* AnimInstance = FirstPersonMesh->GetAnimInstance())
+		{
+			AnimInstance->Montage_Play(Montage, PlayRate);
+		}
+	}
+	if (USkeletalMeshComponent* CharacterMesh = OwningCharacter->GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
+		{
+			AnimInstance->Montage_Play(Montage, PlayRate);
+		}
+	}
+}
+
+void ASupermarketMayhemWeapon::PlayCosmeticSequence(UAnimSequenceBase* Animation, float PlayRate)
+{
+	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	if (!OwningCharacter || !Animation)
+	{
+		return;
+	}
+	PlaySequenceOnMesh(OwningCharacter->GetFirstPersonMesh(), Animation, PlayRate);
+	PlaySequenceOnMesh(OwningCharacter->GetMesh(), Animation, PlayRate);
+}
+
+UAnimMontage* ASupermarketMayhemWeapon::PlaySequenceOnMesh(USkeletalMeshComponent* Mesh, UAnimSequenceBase* Animation, float PlayRate)
+{
+	if (!Mesh || !Animation)
+	{
+		return nullptr;
+	}
+	if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+	{
+		return AnimInstance->PlaySlotAnimationAsDynamicMontage(Animation, CosmeticAnimationSlot,
+			0.1f, 0.1f, FMath::Max(PlayRate, 0.01f), 1);
+	}
+	return nullptr;
+}
+
+void ASupermarketMayhemWeapon::UpdateReloadPresentation(bool bNowReloading)
+{
+	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	if (!OwningCharacter)
+	{
+		OwningCharacter = PresentationCharacter.Get();
+	}
+	if (!OwningCharacter)
+	{
+		return;
+	}
+	if (bNowReloading)
+	{
+		const float PlayRate = ReloadAnimation && ReloadDuration > 0.0f
+			? ReloadAnimation->GetPlayLength() / ReloadDuration
+			: 1.0f;
+		const ASupermarketMayhemCharacter* Character = OwningCharacter;
+		FirstPersonReloadMontage = PlaySequenceOnMesh(Character->GetFirstPersonMesh(), ReloadAnimation, PlayRate);
+		ThirdPersonReloadMontage = PlaySequenceOnMesh(Character->GetMesh(), ReloadAnimation, PlayRate);
+		if (ReloadSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, ReloadSound, GetActorLocation());
+		}
+		return;
+	}
+	if (USkeletalMeshComponent* FirstPersonMesh = OwningCharacter->GetFirstPersonMesh())
+	{
+		if (UAnimInstance* AnimInstance = FirstPersonMesh->GetAnimInstance(); AnimInstance && FirstPersonReloadMontage.IsValid())
+		{
+			AnimInstance->Montage_Stop(0.15f, FirstPersonReloadMontage.Get());
+		}
+	}
+	if (USkeletalMeshComponent* CharacterMesh = OwningCharacter->GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance(); AnimInstance && ThirdPersonReloadMontage.IsValid())
+		{
+			AnimInstance->Montage_Stop(0.15f, ThirdPersonReloadMontage.Get());
+		}
+	}
+	FirstPersonReloadMontage.Reset();
+	ThirdPersonReloadMontage.Reset();
+}
+
+void ASupermarketMayhemWeapon::PlayDryFireFeedback()
+{
+	const ASupermarketMayhemCharacter* OwningCharacter = Cast<ASupermarketMayhemCharacter>(GetOwner());
+	if (!OwningCharacter || !OwningCharacter->IsLocallyControlled() || !bIsEquipped || OwningCharacter->GetEquippedWeapon() != this)
+	{
+		return;
+	}
+	if (USkeletalMeshComponent* FirstPersonMesh = OwningCharacter->GetFirstPersonMesh())
+	{
+		PlaySequenceOnMesh(FirstPersonMesh, DryFireAnimation, 1.0f);
+	}
+	if (DryFireSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, DryFireSound, GetActorLocation());
+	}
+}
+
+void ASupermarketMayhemWeapon::StartRecoilRecovery()
+{
+	if (!FirstPersonWeaponMesh)
+	{
+		return;
+	}
+	CurrentRecoilPitch = FMath::Min(CurrentRecoilPitch + FMath::Clamp(RecoilKickDegrees, 0.0f, 3.0f), 3.0f);
+	FTransform RecoilTransform = FirstPersonMeshTransform;
+	RecoilTransform.SetRotation(FirstPersonMeshTransform.GetRotation() * FQuat(FRotator(CurrentRecoilPitch, 0.0f, 0.0f)));
+	FirstPersonWeaponMesh->SetRelativeTransform(RecoilTransform);
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(RecoilReturnTimerHandle, this, &ASupermarketMayhemWeapon::UpdateRecoilRecovery, 0.016f, true);
+	}
+}
+
+void ASupermarketMayhemWeapon::UpdateRecoilRecovery()
+{
+	UWorld* World = GetWorld();
+	if (!World || !FirstPersonWeaponMesh)
+	{
+		return;
+	}
+	CurrentRecoilPitch = FMath::FInterpTo(CurrentRecoilPitch, 0.0f,
+		FMath::Clamp(World->GetDeltaSeconds(), 0.001f, 0.05f), FMath::Max(RecoilReturnSpeed, 0.1f));
+	if (CurrentRecoilPitch <= 0.01f)
+	{
+		CurrentRecoilPitch = 0.0f;
+		FirstPersonWeaponMesh->SetRelativeTransform(FirstPersonMeshTransform);
+		World->GetTimerManager().ClearTimer(RecoilReturnTimerHandle);
+		return;
+	}
+	FTransform RecoilTransform = FirstPersonMeshTransform;
+	RecoilTransform.SetRotation(FirstPersonMeshTransform.GetRotation() * FQuat(FRotator(CurrentRecoilPitch, 0.0f, 0.0f)));
+	FirstPersonWeaponMesh->SetRelativeTransform(RecoilTransform);
+}
+
+void ASupermarketMayhemWeapon::HideMuzzleFlash()
+{
+	if (FirstPersonMuzzleFlash) FirstPersonMuzzleFlash->SetVisibility(false);
+	if (ThirdPersonMuzzleFlash) ThirdPersonMuzzleFlash->SetVisibility(false);
 }
 
 ASupermarketMayhemCharacter* ASupermarketMayhemWeapon::FindTargetedCharacter() const

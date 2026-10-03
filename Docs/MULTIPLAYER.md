@@ -63,6 +63,17 @@ replicated and do not affect the server's actor attachment, hit validation or
 weapon state. The visual placement and multiplayer presentation still need
 PIE verification.
 
+Cosmetic fire feedback is emitted by the server only after the equipped
+Hunter, Hunt phase, reload and server-owned ammo checks succeed. A transient
+unreliable multicast plays the fire montage/sound and muzzle light on relevant
+weapon replicas; only the locally controlled owner receives mesh-only recoil.
+Reload presentation follows the replicated reload flag, and equip presentation
+follows the replicated equipped flag. Empty-fire requests are checked by the
+server and can return a throttled owner-only cosmetic cue; they do not spend
+ammo or run the hit trace. The server also requires the Character's equipped
+weapon reference to match the requesting actor. These runtime behaviors still
+need PIE verification.
+
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.
 

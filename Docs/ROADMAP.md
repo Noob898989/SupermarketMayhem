@@ -89,8 +89,8 @@ Goal: two or more clients see replicated players/props.
   Unreal Editor control for starting and observing multi-client PIE.
 
 ## Phase 4 - Hunter weapon
-Status: In Progress (weapon foundation implemented and compiled; runtime
-validation pending)
+Status: In Progress (weapon foundation and feedback implemented and
+compiled; runtime validation pending)
 Goal: one weapon can aim, fire, hit and eliminate a Hider with server authority.
 - Existing two-player PIE verification (2026-08-25) covered the prior
   HunterComponent trace/RPC path through GameMode::EliminateHider.
@@ -115,11 +115,27 @@ Goal: one weapon can aim, fire, hit and eliminate a Hider with server authority.
   third-person component is hidden from the owner and locally attaches to
   the character's `hand_r` bone. Replicated equipped state drives visibility;
   the authoritative actor equip attachment and gameplay state are unchanged.
+- Fire/reload/equip/dry-fire feedback uses the existing mannequin pistol
+  montage/animation assets where available. Reload, equip and dry-fire
+  sequences are played through local dynamic montages. Accepted fire triggers
+  a server-originated unreliable cosmetic multicast for montage playback, the
+  existing generic template weapon sound and a short muzzle point-light pulse.
+  Reload and equip presentation follows their replicated authoritative
+  states. Missing reload, equip and dry-fire sounds remain configurable
+  hooks.
+- First-person recoil is a small configurable weapon-mesh rotation with a
+  timer-driven return; it does not alter camera direction or server trace
+  behavior. Empty-magazine requests are rejected by the server and may return
+  a throttled owner-only dry-fire cue without spending ammo or tracing.
+- Weapon validation now also requires the Character's replicated equipped
+  reference to point to the requesting weapon actor, preventing stale or
+  unrelated owned weapon actors from acting.
 - Unreal Engine 5.8 Editor and Game Development targets compile. Ammo/reload,
-  elimination and the new mesh presentation have not yet been
-  runtime/PIE-verified. The mesh asset and socket fit still need visual
-  confirmation in the Editor.
-- Animation, VFX and audio remain future work.
+  elimination and weapon presentation/feedback have not yet been
+  runtime/PIE-verified. Mesh/socket fit, montage compatibility and feedback
+  timing still need visual confirmation in the Editor.
+- Dedicated muzzle-flash particles and reload/equip/dry-fire audio remain
+  future work; the current light pulse and empty audio hooks are placeholders.
 
 ## Phase 5 - Round system
 Status: Done (committed, verified) - corresponds to AP3; extended

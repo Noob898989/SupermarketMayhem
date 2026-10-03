@@ -9,6 +9,12 @@
 class ASupermarketMayhemCharacter;
 class UStaticMesh;
 class UStaticMeshComponent;
+class UAnimMontage;
+class UAnimSequence;
+class UAnimSequenceBase;
+class USkeletalMeshComponent;
+class UPointLightComponent;
+class USoundBase;
 
 /** Server-authoritative, reusable base for player weapons. */
 UCLASS(Blueprintable)
@@ -75,7 +81,7 @@ protected:
 	int32 CurrentAmmo = 0;
 
 	/** Whether the server is currently reloading. Replicated to relevant clients. */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Weapon|Ammo", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_ReloadingState, BlueprintReadOnly, Category = "Supermarket Mayhem|Weapon|Ammo", meta = (AllowPrivateAccess = "true"))
 	bool bIsReloading = false;
 
 	/** True while this weapon is equipped; replicated for relevant clients. */
@@ -102,6 +108,54 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Supermarket Mayhem|Weapon|Presentation")
 	TObjectPtr<UStaticMeshComponent> ThirdPersonWeaponMesh;
 
+	/** Existing mannequin pistol animation assets; all playback is cosmetic. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Animation")
+	TObjectPtr<UAnimMontage> FireMontage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Animation")
+	TObjectPtr<UAnimSequence> ReloadAnimation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Animation")
+	TObjectPtr<UAnimSequence> EquipAnimation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Animation")
+	TObjectPtr<UAnimSequence> DryFireAnimation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Animation")
+	FName CosmeticAnimationSlot = FName(TEXT("DefaultSlot"));
+
+	/** Optional sound hooks; only the existing template fire sound is assigned by default. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Audio")
+	TObjectPtr<USoundBase> FireSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Audio")
+	TObjectPtr<USoundBase> ReloadSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Audio")
+	TObjectPtr<USoundBase> EquipSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Audio")
+	TObjectPtr<USoundBase> DryFireSound;
+
+	/** Short point-light flash placeholders attached at the muzzle on each view representation. */
+	UPROPERTY(VisibleAnywhere, Category = "Supermarket Mayhem|Weapon|Presentation")
+	TObjectPtr<UPointLightComponent> FirstPersonMuzzleFlash;
+
+	UPROPERTY(VisibleAnywhere, Category = "Supermarket Mayhem|Weapon|Presentation")
+	TObjectPtr<UPointLightComponent> ThirdPersonMuzzleFlash;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation")
+	FVector MuzzleOffset = FVector(35.0f, 0.0f, 0.0f);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation", meta = (ClampMin = "0.0", ClampMax = "3.0"))
+	float RecoilKickDegrees = 0.8f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation", meta = (ClampMin = "0.1"))
+	float RecoilReturnSpeed = 12.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation", meta = (ClampMin = "0.01", ClampMax = "0.2"))
+	float MuzzleFlashDuration = 0.05f;
+
 	UFUNCTION(Server, Reliable)
 	void ServerRequestFire();
 
@@ -111,8 +165,25 @@ protected:
 	UFUNCTION()
 	void OnRep_EquippedState();
 
+	UFUNCTION()
+	void OnRep_ReloadingState();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastPlayFireFeedback();
+
+	UFUNCTION(Client, Unreliable)
+	void ClientPlayDryFireFeedback();
+
 	/** Rebuilds local-only mesh attachments from the replicated equip state. */
 	void UpdateWeaponPresentation();
+	void UpdateReloadPresentation(bool bNowReloading);
+	void PlayCosmeticMontage(UAnimMontage* Montage, float PlayRate = 1.0f);
+	void PlayCosmeticSequence(UAnimSequenceBase* Animation, float PlayRate = 1.0f);
+	UAnimMontage* PlaySequenceOnMesh(USkeletalMeshComponent* Mesh, UAnimSequenceBase* Animation, float PlayRate);
+	void PlayDryFireFeedback();
+	void StartRecoilRecovery();
+	void UpdateRecoilRecovery();
+	void HideMuzzleFlash();
 
 	/** Performs server-side role, round, equipment and ECC_Camera hit validation. */
 	void ResolveFireRequest();
@@ -130,4 +201,11 @@ protected:
 	void CompleteReload();
 
 	FTimerHandle ReloadTimerHandle;
+	FTimerHandle MuzzleFlashTimerHandle;
+	FTimerHandle RecoilReturnTimerHandle;
+	float CurrentRecoilPitch = 0.0f;
+	float NextDryFireFeedbackTime = 0.0f;
+	TWeakObjectPtr<ASupermarketMayhemCharacter> PresentationCharacter;
+	TWeakObjectPtr<UAnimMontage> FirstPersonReloadMontage;
+	TWeakObjectPtr<UAnimMontage> ThirdPersonReloadMontage;
 };

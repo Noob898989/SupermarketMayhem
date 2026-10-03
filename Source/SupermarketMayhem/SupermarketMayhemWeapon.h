@@ -7,6 +7,8 @@
 #include "SupermarketMayhemWeapon.generated.h"
 
 class ASupermarketMayhemCharacter;
+class UStaticMesh;
+class UStaticMeshComponent;
 
 /** Server-authoritative, reusable base for player weapons. */
 UCLASS(Blueprintable)
@@ -77,14 +79,40 @@ protected:
 	bool bIsReloading = false;
 
 	/** True while this weapon is equipped; replicated for relevant clients. */
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Weapon", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedState, BlueprintReadOnly, Category = "Supermarket Mayhem|Weapon", meta = (AllowPrivateAccess = "true"))
 	bool bIsEquipped = false;
+
+	/** Shared placeholder mesh used for local first-person and remote third-person presentation. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation")
+	TObjectPtr<UStaticMesh> WeaponMeshAsset;
+
+	/** Camera-relative first-person placement, tuned later through weapon defaults. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation")
+	FTransform FirstPersonMeshTransform = FTransform(FRotator::ZeroRotator, FVector(28.0f, 12.0f, -14.0f));
+
+	/** Hand socket-relative third-person placement. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon|Presentation")
+	FTransform ThirdPersonMeshTransform = FTransform(FRotator(0.0f, 90.0f, 0.0f), FVector::ZeroVector);
+
+	/** Owner-only weapon view, attached locally to the first-person camera. */
+	UPROPERTY(VisibleAnywhere, Category = "Supermarket Mayhem|Weapon|Presentation")
+	TObjectPtr<UStaticMeshComponent> FirstPersonWeaponMesh;
+
+	/** World representation, attached locally to the character's hand socket. */
+	UPROPERTY(VisibleAnywhere, Category = "Supermarket Mayhem|Weapon|Presentation")
+	TObjectPtr<UStaticMeshComponent> ThirdPersonWeaponMesh;
 
 	UFUNCTION(Server, Reliable)
 	void ServerRequestFire();
 
 	UFUNCTION(Server, Reliable)
 	void ServerRequestReload();
+
+	UFUNCTION()
+	void OnRep_EquippedState();
+
+	/** Rebuilds local-only mesh attachments from the replicated equip state. */
+	void UpdateWeaponPresentation();
 
 	/** Performs server-side role, round, equipment and ECC_Camera hit validation. */
 	void ResolveFireRequest();

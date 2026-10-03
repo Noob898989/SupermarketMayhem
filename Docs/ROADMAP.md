@@ -108,9 +108,18 @@ Goal: one weapon can aim, fire, hit and eliminate a Hider with server authority.
   unequip cancel reload; each Preparation reset refills the weapon.
 - A runtime Enhanced Input Reload action is mapped to R locally, without
   changing IA_Eliminate or existing input assets.
+- Weapon presentation: the replicated weapon actor now owns two
+  non-authoritative static-mesh components using the existing
+  `/Game/Weapons/Pistol/Meshes/SM_Pistol` asset. The first-person component
+  is owner-only and locally attaches to the character camera; the
+  third-person component is hidden from the owner and locally attaches to
+  the character's `hand_r` bone. Replicated equipped state drives visibility;
+  the authoritative actor equip attachment and gameplay state are unchanged.
 - Unreal Engine 5.8 Editor and Game Development targets compile. Ammo/reload,
-  replication and elimination have not yet been runtime/PIE-verified.
-- Weapon mesh, animation, VFX and audio remain future work.
+  elimination and the new mesh presentation have not yet been
+  runtime/PIE-verified. The mesh asset and socket fit still need visual
+  confirmation in the Editor.
+- Animation, VFX and audio remain future work.
 
 ## Phase 5 - Round system
 Status: Done (committed, verified) - corresponds to AP3; extended

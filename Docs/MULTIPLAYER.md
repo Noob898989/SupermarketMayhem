@@ -55,6 +55,14 @@ cancelled on unequip, Result, and the next round's Preparation reset. The
 runtime Reload action is bound locally to R. This path compiles but still
 needs PIE verification.
 
+The replicated equip flag also drives two cosmetic mesh components on each
+weapon instance: an owner-only first-person component attached locally to the
+Hunter camera, and a third-person component attached locally to the character's
+`hand_r` bone and hidden from its owner. These component attachments are not
+replicated and do not affect the server's actor attachment, hit validation or
+weapon state. The visual placement and multiplayer presentation still need
+PIE verification.
+
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.
 

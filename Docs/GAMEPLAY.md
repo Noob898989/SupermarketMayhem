@@ -69,8 +69,11 @@ The default magazine holds six rounds, and reload takes 1.5 seconds; both
 values are weapon-configurable. Press R to request a reload. Firing spends a
 round on a validated shot, including a miss; firing with no ammo or during
 reload is rejected. Ammo and reload state are server-owned and replicated.
-This foundation has no weapon presentation and still needs runtime PIE
-verification; see Docs/ROADMAP.md, Phase 4.
+The weapon uses the existing pistol static mesh for the Hunter's owner-only
+camera view and a third-person hand-mounted view. Both are cosmetic components
+driven by the replicated equipped state; their visual attachments do not
+control server gameplay. Ammo, reload, elimination and this presentation still
+need runtime PIE verification; see Docs/ROADMAP.md, Phase 4.
 
 ## Future ideas
 Possible later systems:

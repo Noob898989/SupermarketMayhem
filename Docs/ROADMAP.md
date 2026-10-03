@@ -258,10 +258,12 @@ restart to Preparation - PIE-tested end-to-end for both outcomes.)
 - Customer AI calls the same server interaction on successful shopping-target
   arrival. Preparation resets interaction counts; Result/Waiting block players.
 - Editor and Game Win64 Development builds succeeded; source review and
-  `git diff --check` passed. The headless two-client run assigned roles, entered
-  Preparation, spawned four customers and reached Hunt, but the map had zero
-  active Recast tiles and destination queries failed. Editor commandlet nav
-  rebuild is locked. Customer movement and actual network interaction remain
-  unverified; PIE is open.
+  `git diff --check` passed. The initial headless run found zero active tiles.
+  The cause was an empty, map-placed Recast actor: runtime generation did not
+  request a full initial build for that existing actor. The server now builds
+  navigation once at Preparation only when active tile count is zero. A fresh
+  headless two-client run generated six tiles, all four NPC navigation
+  requests were accepted, three NPCs reached tagged shelf targets and Hunt was
+  reached. PIE and client-side replication remain open.
 - No inventory, pickup/throw, product economy, HUD widget or full chaos behavior
   was added. Prompt text is exposed as an API only.

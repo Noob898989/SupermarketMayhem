@@ -80,13 +80,13 @@ falloff, configurable reaction sensitivity and a short cooldown; the server
 AIController may interrupt walking for strong events and select another
 destination. The controller clears behavior timers on pause/reset, and no
 additional AI Tick or client RPC is used. The existing Manny Unarmed
-animation blueprint supplies locomotion; Shop uses stationary idle. NavMesh
-coverage, target placement, animation appearance, client replication and the
-new noise reaction still need PIE/runtime verification. A fresh headless
-server/two-client smoke test after this change confirmed role assignment,
-Preparation, four customer spawns, initial navigation requests for all four,
-and transition to Hunt. It did not exercise a weapon fire request or the new
-noise reaction path.
+animation blueprint supplies locomotion; Shop uses stationary idle. When the
+placed Recast actor has no active tiles, the authoritative GameMode builds the
+small blockout NavMesh once at Preparation. A headless server/two-client run
+confirmed six active tiles, accepted navigation requests for all four
+customers, several completed shelf arrivals, role assignment, Preparation and
+Hunt. Client replication/presentation, Hunter fire/noise reaction and PIE
+remain unverified.
 
 ## Content
 Products and weapons should be data-driven where useful so new content does not require rewriting core systems.
@@ -134,7 +134,10 @@ entry point from authority-side AI. Optional player interaction noise routes
 through the existing GameMode/customer-manager hook and is disabled by default.
 
 No inventory, pickup/throw, checkout, product economy, HUD widget or chaos
-system is implemented. Editor and Game builds succeeded. The two-client
-headless run reached Hunt and spawned four customers, but the updated level
-produced zero active NavMesh tiles. Movement and network interaction remain
-unverified pending a working NavMesh and PIE validation.
+system is implemented. The two-client headless run initially found zero active
+NavMesh tiles because the map's placed Recast actor had no baked data and the
+runtime did not automatically request a full build for that existing actor.
+The GameMode now checks active tiles at Preparation and performs a server
+`Build()` only when none exist. The validated run generated six active tiles,
+all four NPC navigation requests were accepted, three shelf arrivals were
+logged, and Hunt began. PIE and client-side replication remain open.

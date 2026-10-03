@@ -100,10 +100,12 @@ used. Place level actors tagged `CustomerSpawn` and `CustomerDestination` to
 author spawn and shopping locations; add a second actor tag matching
 `PreferredDestinationTag` to specialize a profile. Tagged destinations are
 checked for a complete NavMesh path. PlayerStarts are the spawn fallback.
-The blockout now has a NavMeshBoundsVolume and dynamic Recast generation.
-A headless two-client server smoke test confirmed four NPC spawns and a first
-navigation request for each customer; visual movement and client-side state
-replication still require PIE verification.
+The blockout has a NavMeshBoundsVolume and dynamic Recast generation. The
+GameMode now performs a one-time authoritative `Build()` during Preparation
+only when the placed Recast data has no active tiles. In the latest headless
+two-client run this built six tiles, all four customers accepted navigation
+requests, and three reached tagged shelf targets. Client-side presentation
+and replicated movement still need PIE verification.
 
 Server-confirmed Hunter shots also report noise (including a valid miss) to
 the server customer manager. NPCs combine intensity, distance falloff and
@@ -113,9 +115,9 @@ shopping cycle continues. Short per-customer cooldowns coalesce rapid reports.
 The Manny Unarmed animation blueprint supplies movement and idle presentation;
 Shop currently uses its stationary idle pose, with no dedicated shopping
 animation. A fresh headless server/two-client smoke test reached Hunt with four
-server-spawned NPCs and accepted navigation requests for all four. Actual
-noise reactions, visible locomotion and client-side NPC replication still need
-PIE verification.
+server-spawned NPCs; all four accepted navigation requests and three reached
+shopping targets. Actual noise reactions, visible locomotion and client-side
+NPC replication still need PIE verification.
 
 ## Future ideas
 Possible later systems:
@@ -148,6 +150,7 @@ round and interaction-enabled state. Interaction count replicates and resets
 at Preparation. Optional player interaction noise uses the existing server
 customer-noise hook and is disabled by default. The actor also exposes a
 server-only physics/movement-replication hook; no chaos behavior is enabled.
-There is no HUD prompt widget. The updated level had zero active NavMesh tiles
-in the headless run, preventing NPC destination queries; movement and player/NPC
-interaction runtime behavior remain unverified. PIE is open.
+There is no HUD prompt widget. The latest headless server/two-client run
+generated six active NavMesh tiles and three NPCs reached shelf targets through
+the shared server interaction entry point. Player input interaction, visual
+movement and client-side replication still require PIE verification.

@@ -3,6 +3,8 @@
 #include "SupermarketMayhemGameMode.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "NavigationSystem.h"
+#include "NavMesh/RecastNavMesh.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -204,6 +206,18 @@ void ASupermarketMayhemGameMode::StartPreparationPhase()
 	SetRoundState(ESupermarketMayhemRoundState::Preparation);
 	if (UWorld* RoundWorld = GetWorld())
 	{
+		if (UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(RoundWorld))
+		{
+			const ARecastNavMesh* RecastNavMesh = Cast<ARecastNavMesh>(
+				NavigationSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate));
+			if (RecastNavMesh && RecastNavMesh->GetNumActiveTiles() == 0 && RecastNavMesh->SupportsRuntimeGeneration())
+			{
+				UE_LOG(LogSupermarketMayhem, Log, TEXT("No baked NavMesh tiles found; building runtime navigation on the authoritative server."));
+				NavigationSystem->Build();
+				UE_LOG(LogSupermarketMayhem, Log, TEXT("Runtime NavMesh build completed with %d active tiles."), RecastNavMesh->GetNumActiveTiles());
+			}
+		}
+
 		for (TActorIterator<ASupermarketMayhemInteractiveActor> It(RoundWorld); It; ++It)
 		{
 			It->ResetForNewRound();

@@ -12,6 +12,7 @@ class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 class USupermarketMayhemDisguiseComponent;
+class USupermarketMayhemInteractionComponent;
 class USupermarketMayhemHunterComponent;
 class ASupermarketMayhemWeapon;
 class ULocalPlayer;
@@ -39,6 +40,10 @@ class ASupermarketMayhemCharacter : public ACharacter
 	/** Handles disguising as / reverting from a nearby Supermarket Mayhem prop */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USupermarketMayhemDisguiseComponent* DisguiseComponent;
+
+	/** Handles validated first-person interaction with world objects. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	USupermarketMayhemInteractionComponent* InteractionComponent;
 
 	/** Handles a Hunter's attempt to eliminate a nearby Hider */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -128,6 +133,7 @@ public:
 
 	/** Returns the disguise component **/
 	USupermarketMayhemDisguiseComponent* GetDisguiseComponent() const { return DisguiseComponent; }
+	USupermarketMayhemInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
 
 	/** Returns the replicated equipped weapon, if one is available. */
 	ASupermarketMayhemWeapon* GetEquippedWeapon() const { return EquippedWeapon; }

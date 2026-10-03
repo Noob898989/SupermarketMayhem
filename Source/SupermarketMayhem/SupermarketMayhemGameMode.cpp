@@ -13,6 +13,8 @@
 #include "SupermarketMayhemPlayerState.h"
 #include "SupermarketMayhemCustomerSpawnManager.h"
 #include "GameFramework/GameStateBase.h"
+#include "EngineUtils.h"
+#include "SupermarketMayhemInteractiveActor.h"
 
 ASupermarketMayhemGameMode::ASupermarketMayhemGameMode()
 {
@@ -200,6 +202,13 @@ void ASupermarketMayhemGameMode::StartPreparationPhase()
 	}
 
 	SetRoundState(ESupermarketMayhemRoundState::Preparation);
+	if (UWorld* RoundWorld = GetWorld())
+	{
+		for (TActorIterator<ASupermarketMayhemInteractiveActor> It(RoundWorld); It; ++It)
+		{
+			It->ResetForNewRound();
+		}
+	}
 	if (ASupermarketMayhemCustomerSpawnManager* CustomerManager = EnsureCustomerSpawnManager())
 	{
 		CustomerManager->BeginPreparationPhase();

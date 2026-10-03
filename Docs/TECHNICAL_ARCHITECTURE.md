@@ -114,3 +114,27 @@ Only add plugins with a documented purpose, UE5.8 compatibility and acceptable l
 
 ## Testing
 Each milestone needs a reproducible test. Multiplayer tests should progress from local clients to real Steam sessions.
+
+### Interactive supermarket foundation
+`ASupermarketMayhemInteractiveActor` is a replicated server-authoritative base
+for player- and customer-facing objects. It owns a static mesh and a separate
+query-only visibility volume, prompt/interaction metadata, an authority-only
+interaction count/event, and round reset behavior. It has no per-frame tick.
+Its optional physics hook enables server physics and movement replication for
+future movable objects without adding chaos rules.
+
+`ASupermarketMayhemShelf` carries a replicated product actor array and is tagged
+`CustomerDestination` and `ShoppingTarget`. `ASupermarketMayhemProduct` adds
+replicated product ID/type/weight fields. The map uses simple cube meshes.
+`USupermarketMayhemInteractionComponent` supplies local target and prompt
+queries, then requests a server action; the server repeats the trace and
+validates target identity, range, role, elimination and round. Existing disguise
+interaction remains the fallback. NPC target completion calls the same actor
+entry point from authority-side AI. Optional player interaction noise routes
+through the existing GameMode/customer-manager hook and is disabled by default.
+
+No inventory, pickup/throw, checkout, product economy, HUD widget or chaos
+system is implemented. Editor and Game builds succeeded. The two-client
+headless run reached Hunt and spawned four customers, but the updated level
+produced zero active NavMesh tiles. Movement and network interaction remain
+unverified pending a working NavMesh and PIE validation.

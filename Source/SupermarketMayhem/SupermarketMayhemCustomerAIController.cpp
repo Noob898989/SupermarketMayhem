@@ -4,6 +4,7 @@
 
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
+#include "NavMesh/RecastNavMesh.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
@@ -12,6 +13,7 @@
 #include "SupermarketMayhem.h"
 #include "SupermarketMayhemCustomer.h"
 #include "SupermarketMayhemCustomerData.h"
+#include "SupermarketMayhemInteractiveActor.h"
 
 namespace
 {
@@ -68,6 +70,7 @@ void ASupermarketMayhemCustomerAIController::SetBehaviorEnabled(bool bEnabled, b
 	bBehaviorEnabled = bEnabled;
 	if (!bEnabled)
 	{
+		CurrentShoppingTarget.Reset();
 		StopMovement();
 		SetCustomerState(ESupermarketMayhemCustomerState::Paused);
 		return;
@@ -77,6 +80,7 @@ void ASupermarketMayhemCustomerAIController::SetBehaviorEnabled(bool bEnabled, b
 	{
 		StopMovement();
 		LastDestination = FVector::ZeroVector;
+		CurrentShoppingTarget.Reset();
 		LastNoiseReactionTime = -1.0f;
 	}
 	SetCustomerState(ESupermarketMayhemCustomerState::Idle);
@@ -123,6 +127,14 @@ void ASupermarketMayhemCustomerAIController::OnMoveCompleted(FAIRequestID Reques
 	SetCustomerState(Result.IsSuccess()
 		? ESupermarketMayhemCustomerState::Shop
 		: ESupermarketMayhemCustomerState::Idle);
+	if (Result.IsSuccess())
+	{
+		if (ASupermarketMayhemInteractiveActor* ShoppingTarget = CurrentShoppingTarget.Get())
+		{
+			ShoppingTarget->TryInteract(Customer.Get());
+		}
+	}
+	CurrentShoppingTarget.Reset();
 	ScheduleNextDestination(Result.IsSuccess() ? GetRandomShoppingDuration() : GetRandomIdleDuration());
 }
 
@@ -178,6 +190,7 @@ void ASupermarketMayhemCustomerAIController::ChooseAndMoveToDestination()
 
 	FVector Destination = FVector::ZeroVector;
 	bool bFoundDestination = false;
+	CurrentShoppingTarget.Reset();
 	if (!TaggedDestinations.IsEmpty())
 	{
 		for (int32 Attempt = 0; Attempt < 5; ++Attempt)
@@ -194,6 +207,7 @@ void ASupermarketMayhemCustomerAIController::ChooseAndMoveToDestination()
 					if (Path && Path->IsValid() && !Path->IsPartial())
 					{
 						Destination = ProjectedLocation.Location;
+						CurrentShoppingTarget = Cast<ASupermarketMayhemInteractiveActor>(Candidate);
 						bFoundDestination = true;
 						break;
 					}
@@ -223,7 +237,13 @@ void ASupermarketMayhemCustomerAIController::ChooseAndMoveToDestination()
 		if (!bHasLoggedNavigationStatus)
 		{
 			bHasLoggedNavigationStatus = true;
-			UE_LOG(LogSupermarketMayhem, Warning, TEXT("Customer %s found no reachable NavMesh destinations; verify NavMesh bounds and walkable coverage."), *GetNameSafe(CustomerCharacter));
+			const ANavigationData* NavData = NavigationSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
+			const ARecastNavMesh* RecastNavData = Cast<ARecastNavMesh>(NavData);
+			FNavLocation ProjectedCustomerLocation;
+			const bool bCustomerLocationProjects = NavigationSystem->ProjectPointToNavigation(CustomerCharacter->GetActorLocation(), ProjectedCustomerLocation);
+			UE_LOG(LogSupermarketMayhem, Warning, TEXT("Customer %s found no reachable NavMesh destinations (NavData=%s, tiles=%d, activeTiles=%d, spawnProjects=%s)."),
+				*GetNameSafe(CustomerCharacter), *GetNameSafe(NavData), RecastNavData ? RecastNavData->GetNavMeshTilesCount() : -1,
+				RecastNavData ? RecastNavData->GetNumActiveTiles() : -1, bCustomerLocationProjects ? TEXT("true") : TEXT("false"));
 		}
 		SetCustomerState(ESupermarketMayhemCustomerState::Idle);
 		ScheduleNextDestination(GetRandomIdleDuration());

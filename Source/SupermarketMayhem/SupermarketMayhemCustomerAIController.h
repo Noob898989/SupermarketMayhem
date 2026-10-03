@@ -8,6 +8,7 @@
 #include "SupermarketMayhemCustomerAIController.generated.h"
 
 class ASupermarketMayhemCustomer;
+class ASupermarketMayhemInteractiveActor;
 
 UCLASS()
 class SUPERMARKETMAYHEM_API ASupermarketMayhemCustomerAIController : public AAIController
@@ -33,6 +34,7 @@ private:
 	void SetCustomerState(ESupermarketMayhemCustomerState NewState);
 
 	TWeakObjectPtr<ASupermarketMayhemCustomer> Customer;
+	TWeakObjectPtr<ASupermarketMayhemInteractiveActor> CurrentShoppingTarget;
 	FTimerHandle BehaviorTimerHandle;
 	FVector LastDestination = FVector::ZeroVector;
 	bool bBehaviorEnabled = false;

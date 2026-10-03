@@ -128,3 +128,26 @@ Possible later systems:
 - more weapons
 
 Do not build these before the basic loop is fun.
+
+## Interactive supermarket objects
+The blockout contains four interactive shelf targets with two placeholder
+product actors each. A shelf is both a tagged customer destination and player
+interaction target, with references to multiple products. Product actors carry
+minimal ID/type/name/mesh/optional-weight data; there is no product economy.
+
+The existing Interact input first requests interaction with the actor under the
+player camera. The character component exposes the focused target and prompt
+text for a future HUD. If no interactive actor is hit, existing disguise
+interaction continues. Living Hiders and Hunters may use objects in Preparation
+and Hunt; Result/Waiting and eliminated players are rejected. Customers use the
+same server interaction entry point on arrival and remain in the timed Shop
+state; no product is consumed.
+
+The server retraces aim and validates target, distance, role, elimination,
+round and interaction-enabled state. Interaction count replicates and resets
+at Preparation. Optional player interaction noise uses the existing server
+customer-noise hook and is disabled by default. The actor also exposes a
+server-only physics/movement-replication hook; no chaos behavior is enabled.
+There is no HUD prompt widget. The updated level had zero active NavMesh tiles
+in the headless run, preventing NPC destination queries; movement and player/NPC
+interaction runtime behavior remain unverified. PIE is open.

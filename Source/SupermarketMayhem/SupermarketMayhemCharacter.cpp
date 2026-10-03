@@ -18,6 +18,7 @@
 #include "SupermarketMayhem.h"
 #include "SupermarketMayhemDisguiseComponent.h"
 #include "SupermarketMayhemHunterComponent.h"
+#include "SupermarketMayhemInteractionComponent.h"
 #include "SupermarketMayhemPlayerState.h"
 #include "SupermarketMayhemWeapon.h"
 
@@ -57,6 +58,7 @@ ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 	GetCharacterMovement()->AirControl = 0.5f;
 
 	DisguiseComponent = CreateDefaultSubobject<USupermarketMayhemDisguiseComponent>(TEXT("DisguiseComponent"));
+	InteractionComponent = CreateDefaultSubobject<USupermarketMayhemInteractionComponent>(TEXT("InteractionComponent"));
 
 	HunterComponent = CreateDefaultSubobject<USupermarketMayhemHunterComponent>(TEXT("HunterComponent"));
 }
@@ -195,6 +197,15 @@ void ASupermarketMayhemCharacter::DoJumpEnd()
 
 void ASupermarketMayhemCharacter::DoInteract()
 {
+	if (DisguiseComponent && DisguiseComponent->IsDisguised())
+	{
+		DisguiseComponent->TryInteract();
+		return;
+	}
+	if (InteractionComponent && InteractionComponent->TryInteract())
+	{
+		return;
+	}
 	if (DisguiseComponent)
 	{
 		DisguiseComponent->TryInteract();

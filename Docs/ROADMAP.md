@@ -241,3 +241,27 @@ Do not skip the core loop validation. (Validated 2026-08-25: full 2-player
 core loop - Preparation -> Hider disguises at one of 7 Props -> Hunt ->
 Hunter eliminates the Hider or the Hider escapes -> Result -> automatic
 restart to Preparation - PIE-tested end-to-end for both outcomes.)
+
+### Phase 6.5 - Interactive supermarket foundation
+- Added non-ticking `ASupermarketMayhemInteractiveActor` with a query-only
+  interaction volume, replicated enabled/type/display/target fields, server-only
+  interaction handling, per-round counter reset and an opt-in physics/movement
+  replication hook.
+- Added `ASupermarketMayhemShelf` and `ASupermarketMayhemProduct`. Shelves are
+  customer destinations and carry replicated product actor references; product
+  actors replicate minimal ID/type/weight metadata. The blockout contains four
+  placeholder shelves and eight placeholder products.
+- Character Interact requests use a component that exposes focused actor/prompt
+  queries. Server retraces from the camera and checks target identity, range,
+  round, role, elimination and enabled state. Existing disguise interaction
+  remains the fallback.
+- Customer AI calls the same server interaction on successful shopping-target
+  arrival. Preparation resets interaction counts; Result/Waiting block players.
+- Editor and Game Win64 Development builds succeeded; source review and
+  `git diff --check` passed. The headless two-client run assigned roles, entered
+  Preparation, spawned four customers and reached Hunt, but the map had zero
+  active Recast tiles and destination queries failed. Editor commandlet nav
+  rebuild is locked. Customer movement and actual network interaction remain
+  unverified; PIE is open.
+- No inventory, pickup/throw, product economy, HUD widget or full chaos behavior
+  was added. Prompt text is exposed as an API only.

@@ -126,3 +126,22 @@ If the player count later increases, review:
 - server tick
 - visibility
 - matchmaking capacity
+
+## Interactive world objects
+Interactive shelf/product actors replicate gameplay-facing metadata and
+interaction counts. The actor base has no tick and only changes interaction
+state in its authority-side method. The character component sends a reliable
+request with a target hint; the server independently traces from the camera,
+requires the same actor, then validates range, role, round, elimination and
+enabled state before invoking it. Clients cannot submit arbitrary targets or
+apply local results. NPC arrival uses the same actor method from server AI.
+Living players may interact during Preparation and Hunt; Result/Waiting is
+blocked. Preparation resets the per-round interaction count.
+
+Mesh presentation is separate from the query-only interaction volume. Shelf
+product references and product metadata replicate along with interaction
+counts. A server physics hook can enable movement replication for a future
+movable object, but no physics/chaos action is implemented. The headless run
+reached Hunt with two clients but found zero active NavMesh tiles; NPC movement
+and end-to-end customer interactions were not verified. Player interaction
+and replication still require PIE verification.

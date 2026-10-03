@@ -11,12 +11,32 @@
 #include "SupermarketMayhemDisguiseComponent.h"
 #include "SupermarketMayhemGameState.h"
 #include "SupermarketMayhemPlayerState.h"
+#include "SupermarketMayhemCustomerSpawnManager.h"
 #include "GameFramework/GameStateBase.h"
 
 ASupermarketMayhemGameMode::ASupermarketMayhemGameMode()
 {
 	GameStateClass = ASupermarketMayhemGameState::StaticClass();
 	PlayerStateClass = ASupermarketMayhemPlayerState::StaticClass();
+	CustomerSpawnManagerClass = ASupermarketMayhemCustomerSpawnManager::StaticClass();
+}
+
+ASupermarketMayhemCustomerSpawnManager* ASupermarketMayhemGameMode::EnsureCustomerSpawnManager()
+{
+	if (!HasAuthority() || !GetWorld())
+	{
+		return nullptr;
+	}
+	if (!CustomerSpawnManager && CustomerSpawnManagerClass)
+	{
+		CustomerSpawnManager = GetWorld()->SpawnActor<ASupermarketMayhemCustomerSpawnManager>(CustomerSpawnManagerClass, FTransform::Identity);
+		if (CustomerSpawnManager)
+		{
+			CustomerSpawnManager->Configure(MinimumCustomerCount, MaximumCustomerCount, InitialCustomerCount,
+				CustomerClass, DefaultCustomerData, CustomerSpawnTag, CustomerDestinationTag, CustomerSpawnSpread);
+		}
+	}
+	return CustomerSpawnManager;
 }
 
 ASupermarketMayhemGameState* ASupermarketMayhemGameMode::GetSupermarketMayhemGameState() const
@@ -163,6 +183,10 @@ void ASupermarketMayhemGameMode::StartPreparationPhase()
 	}
 
 	SetRoundState(ESupermarketMayhemRoundState::Preparation);
+	if (ASupermarketMayhemCustomerSpawnManager* CustomerManager = EnsureCustomerSpawnManager())
+	{
+		CustomerManager->BeginPreparationPhase();
+	}
 
 	LockHunterMovement();
 
@@ -230,6 +254,10 @@ void ASupermarketMayhemGameMode::StartHuntPhase()
 	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Starting Hunt phase (%.1f s)."), HuntDuration);
 
 	SetRoundState(ESupermarketMayhemRoundState::Hunt);
+	if (ASupermarketMayhemCustomerSpawnManager* CustomerManager = EnsureCustomerSpawnManager())
+	{
+		CustomerManager->BeginHuntPhase();
+	}
 
 	UnlockHunterMovement();
 
@@ -259,6 +287,10 @@ void ASupermarketMayhemGameMode::StartResultPhase()
 	UE_LOG(LogSupermarketMayhem, Log, TEXT("[SupermarketMayhem] Starting Result phase (%.1f s)."), ResultDuration);
 
 	SetRoundState(ESupermarketMayhemRoundState::Result);
+	if (ASupermarketMayhemCustomerSpawnManager* CustomerManager = EnsureCustomerSpawnManager())
+	{
+		CustomerManager->BeginResultPhase();
+	}
 
 	UnlockHunterMovement();
 	for (ASupermarketMayhemPlayerState* HunterPlayerState : GetPlayersWithRole(ESupermarketMayhemPlayerRole::Hunter))

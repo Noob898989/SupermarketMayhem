@@ -173,8 +173,38 @@ intentionally not being reordered to match actual implementation history
 - this note records the deviation instead.
 
 ## Phase 6 - Living supermarket
-Status: Not started
-NPC customers, ambience and environmental interactions.
+Status: In Progress (NPC foundation implemented, Editor and Game targets
+compiled; runtime validation pending)
+- `ASupermarketMayhemCustomer` provides a replicated Character with a
+  replicated `Idle`, `Walk`, `Shop` or `Paused` state and a `DefaultCustomer`
+  type. It uses the existing simple Manny mesh/Unarmed animation assets.
+- `ASupermarketMayhemCustomerAIController` runs server-only, timer-driven
+  behavior. It chooses level actors tagged `CustomerDestination` (optionally
+  filtered by the profile's preferred destination tag), then falls back to a
+  random reachable NavMesh point. No per-frame AI tick is used.
+- `USupermarketMayhemCustomerData` is an optional Data Asset profile for
+  movement speed, idle/shopping durations, preferred destination tag and
+  reaction sensitivity. Without an assigned asset, one default customer
+  profile is used.
+- `ASupermarketMayhemCustomerSpawnManager` is created by the server GameMode
+  on the first Preparation phase. The default population is 4 (configurable
+  minimum 0, maximum 8); it uses actors tagged `CustomerSpawn`, falling back
+  to level PlayerStarts. The GameMode exposes the count, class, profile and
+  tags for configuration.
+- Customers are enabled/reset for Preparation, continue through Hunt, pause
+  during Result and reset at the next Preparation. A server-only noise hook
+  is present without a reaction behavior.
+- Added a `NavMeshBoundsVolume` to `Lvl_SupermarketBlockout` through the UE
+  Editor scripting workflow, and enabled dynamic Recast generation for the
+  small blockout. The single PlayerStart is the spawn fallback; authored
+  destination tags remain optional.
+- UE 5.8 Editor and Game targets compile. A headless local server with two
+  clients assigned roles, entered Preparation, spawned all 4 NPCs, observed
+  all four accept a navigation request, and entered Hunt. This was not PIE;
+  visual behavior and client-side NPC movement/state replication remain open.
+- No project Automation Tests were present. The level scripting commandlet
+  saved the NavMesh bounds successfully but returned exit code 1 because of a
+  pre-existing Ensure in the protected local DisguiseComponent.
 
 ## Phase 7 - Steam multiplayer
 Status: Not started

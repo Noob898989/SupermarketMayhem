@@ -74,6 +74,19 @@ ammo or run the hit trace. The server also requires the Character's equipped
 weapon reference to match the requesting actor. These runtime behaviors still
 need PIE verification.
 
+## NPC customer authority
+The server GameMode creates a non-replicated customer spawn manager at the
+first Preparation transition. Only that manager spawns NPC Characters;
+customers replicate their Character movement, customer type and simple
+behavior state. Their AIControllers and navigation decisions remain
+server-side and do not own PlayerStates or invoke player role, weapon,
+elimination or round APIs. NPC behavior resets/enables for Preparation,
+continues during Hunt and pauses during Result. Network visibility and
+NavMesh-driven server movement passed a headless two-client smoke test (four
+NPCs spawned and each accepted a first navigation request). PIE validation of
+client-side NPC visibility/movement and replicated customer state remains
+open.
+
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.
 

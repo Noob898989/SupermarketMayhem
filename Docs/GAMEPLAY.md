@@ -82,6 +82,24 @@ weapon mesh. An empty shot is rejected by the server and can return a
 throttled owner-only cue. Ammo, reload, elimination, animation and presentation
 still need runtime PIE verification; see Docs/ROADMAP.md, Phase 4.
 
+## NPC customers
+The first customer foundation spawns four server-owned NPCs when the first
+round enters Preparation (GameMode defaults are configurable: 0-8, initial 4).
+Customers use a replicated mannequin Character and move under a server-only
+AIController. The controller cycles through Idle, Walk and Shop states using
+timers and chooses tagged level destinations or random reachable NavMesh
+locations. It pauses during Result and resets for the next Preparation.
+
+Customer behavior can be configured with an optional Data Asset profile for
+movement speed, idle/shopping duration, preferred destination tag and future
+reaction sensitivity. Without an asset, the base `DefaultCustomer` profile is
+used. Place level actors tagged `CustomerSpawn` and `CustomerDestination` to
+author spawn and shopping locations; PlayerStarts are the spawn fallback.
+The blockout now has a NavMeshBoundsVolume and dynamic Recast generation.
+A headless two-client server smoke test confirmed four NPC spawns and a first
+navigation request for each customer; visual movement and client-side state
+replication still require PIE verification.
+
 ## Future ideas
 Possible later systems:
 - prop abilities

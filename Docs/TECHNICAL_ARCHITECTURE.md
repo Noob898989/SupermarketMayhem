@@ -50,6 +50,35 @@ modify camera aim or server hit traces. Dry-fire feedback is an owner-only
 cosmetic response to a server-rejected empty shot. Presentation asset
 compatibility and multiplayer behavior still require PIE verification.
 
+### Living supermarket customer foundation
+`ASupermarketMayhemGameMode` creates the non-replicated
+`ASupermarketMayhemCustomerSpawnManager` on the server at the first
+Preparation transition. Its editable settings default to four customers
+(minimum 0, maximum 8), a generic customer class, optional customer Data
+Asset, and actor tags for level-authored spawn/destination points. Tagged
+spawn actors are preferred; level PlayerStarts are the fallback.
+
+Each `ASupermarketMayhemCustomer` is a replicated Character using standard
+CharacterMovement replication. Customer type and the small Idle/Walk/Shop/
+Paused state are replicated. Its `ASupermarketMayhemCustomerAIController`
+exists and runs behavior only on the server. Timer callbacks transition
+between states; destinations use tagged actors or random reachable NavMesh
+points. No AI tick or per-movement RPC is added. The optional
+`USupermarketMayhemCustomerData` asset configures speed, idle/shop durations,
+preferred destination tag and reaction sensitivity; base defaults support a
+single `DefaultCustomer` without requiring an authored Data Asset.
+
+Round hooks enable/reset customers during Preparation, keep them moving
+during Hunt and stop movement/behavior during Result. `ReportNoiseToCustomer`
+is a server-checked extension hook only; no flee or investigate policy is
+implemented. The active blockout's NavMesh coverage, level tags, animation
+appearance and client replication still need PIE verification. The blockout
+now contains a `NavMeshBoundsVolume`, with dynamic Recast generation enabled
+for this small prototype map. A headless server/two-client smoke test
+confirmed four customer spawns and accepted initial navigation requests for
+all four; the editor commandlet saved the level change but exited nonzero on
+the existing protected DisguiseComponent Ensure.
+
 ## Content
 Products and weapons should be data-driven where useful so new content does not require rewriting core systems.
 

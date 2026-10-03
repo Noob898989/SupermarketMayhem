@@ -12,6 +12,9 @@ class APlayerController;
 class ACharacter;
 class ASupermarketMayhemGameState;
 class ASupermarketMayhemPlayerState;
+class ASupermarketMayhemCustomer;
+class ASupermarketMayhemCustomerSpawnManager;
+class USupermarketMayhemCustomerData;
 
 /**
  *  Simple GameMode for a first person game.
@@ -84,6 +87,9 @@ protected:
 	/** Assigns configured role slots to the connected players once the complete roster is present. */
 	bool AssignRolesToConnectedPlayers();
 
+	/** Creates and configures the server-side customer manager on the first round. */
+	ASupermarketMayhemCustomerSpawnManager* EnsureCustomerSpawnManager();
+
 	/** Returns all connected players currently assigned the requested role. */
 	TArray<ASupermarketMayhemPlayerState*> GetPlayersWithRole(ESupermarketMayhemPlayerRole Role) const;
 
@@ -99,6 +105,37 @@ protected:
 	/** Role slots assigned in GameState player order. Configure one slot per expected player to select a 2-8 player role distribution. */
 	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Round|Roles")
 	TArray<ESupermarketMayhemPlayerRole> RoundRoleAssignment = { ESupermarketMayhemPlayerRole::Hider, ESupermarketMayhemPlayerRole::Hunter };
+
+	/** NPCs are spawned by the server-side manager during the first Preparation phase. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning")
+	TSubclassOf<ASupermarketMayhemCustomerSpawnManager> CustomerSpawnManagerClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning", meta = (ClampMin = "0", ClampMax = "32"))
+	int32 MinimumCustomerCount = 0;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning", meta = (ClampMin = "0", ClampMax = "32"))
+	int32 MaximumCustomerCount = 8;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning", meta = (ClampMin = "0", ClampMax = "32"))
+	int32 InitialCustomerCount = 4;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning")
+	TSubclassOf<ASupermarketMayhemCustomer> CustomerClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning")
+	TObjectPtr<USupermarketMayhemCustomerData> DefaultCustomerData;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Navigation")
+	FName CustomerSpawnTag = FName(TEXT("CustomerSpawn"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Navigation")
+	FName CustomerDestinationTag = FName(TEXT("CustomerDestination"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Customers|Spawning", meta = (ClampMin = "0.0"))
+	float CustomerSpawnSpread = 250.0f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ASupermarketMayhemCustomerSpawnManager> CustomerSpawnManager;
 
 	/** MaxWalkSpeed cached from each Hunter character before locking movement. */
 	TMap<TWeakObjectPtr<ACharacter>, float> CachedHunterMaxWalkSpeeds;

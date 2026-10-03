@@ -89,18 +89,21 @@ Goal: two or more clients see replicated players/props.
   Unreal Editor control for starting and observing multi-client PIE.
 
 ## Phase 4 - Hunter weapon
-Status: In Progress (uncommitted/untracked) - core mechanic PIE-verified
-2026-08-25
+Status: In Progress (weapon foundation implemented and compiled; runtime
+validation pending)
 Goal: one weapon can aim, fire, hit and eliminate a Hider with server authority.
-- Implemented and PIE-verified: camera-aimed hit detection (ECC_Camera
-  line trace in HunterComponent::FindTargetedCharacter - ECC_Visibility
-  was tried first and found to be ignored by the Character capsule/mesh
-  collision profiles by engine default, then corrected to ECC_Camera,
-  which the capsule blocks), server-authoritative validated elimination
-  (ServerTryEliminate_Implementation -> GameMode::EliminateHider).
-- Not yet done: a visible weapon actor/mesh, ammo/reload, weapon
-  animation - the current implementation is an instant-elimination
-  ability proving the mechanic, not yet an art-complete weapon.
+- Existing two-player PIE verification (2026-08-25) covered the prior
+  HunterComponent trace/RPC path through GameMode::EliminateHider.
+- Weapon foundation: reusable replicated ASupermarketMayhemWeapon actor,
+  server-side Equip/Unequip, replicated equipped state and equipped-weapon
+  reference on Character. Existing IA_Eliminate -> DoEliminate input now
+  requests fire through HunterComponent; the weapon server RPC validates
+  Hunter role, equipped state, Hunt phase, attacker/target elimination state,
+  and a server-side ECC_Camera trace with the weapon's configured range before
+  calling the existing GameMode::EliminateHider.
+- Unreal Engine 5.8 Editor and Game Development targets compile. The new
+  weapon path has not yet been runtime/PIE-verified in this validation pass.
+- Ammo, reload, weapon mesh, animation, VFX and audio remain future work.
 
 ## Phase 5 - Round system
 Status: Done (committed, verified) - corresponds to AP3; extended

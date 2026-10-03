@@ -40,6 +40,17 @@ per-round reset iterate role-assigned players rather than fixed controller
 fields. Roles, elimination and round phase writes remain server-side, while
 the existing PlayerState and GameState replication remains in place.
 
+## Weapon authority implementation
+The Character owns a replicated reference to its equipped weapon actor, which
+is spawned and equipped on the server when a player is assigned Hunter. Clients
+send only a fire request through the weapon's Server RPC. The weapon checks
+authority, equipped state, Hunter role, elimination state and Hunt phase, then
+performs its own server-side `ECC_Camera` trace using the server's camera view
+and configured range. Only a validated Hider hit reaches
+`GameMode::EliminateHider`; the client never supplies a target or hit result.
+The weapon's equipped state and Character's equipped-weapon reference
+replicate. This path compiles but still needs PIE verification.
+
 ## Production direction
 Dedicated servers are the preferred final direction if the game reaches production scale.
 

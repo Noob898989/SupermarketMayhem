@@ -13,6 +13,7 @@ class UCameraComponent;
 class UInputAction;
 class USupermarketMayhemDisguiseComponent;
 class USupermarketMayhemHunterComponent;
+class ASupermarketMayhemWeapon;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -106,6 +107,8 @@ protected:
 
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PossessedBy(AController* NewController) override;
 
 	/** Reacts to the replicated PlayerState reference becoming valid/changing. Re-applies the current disguise state to cover replication ordering races with PlayerState::OnRep_DisguiseState. */
 	virtual void OnRep_PlayerState() override;
@@ -122,6 +125,12 @@ public:
 	/** Returns the disguise component **/
 	USupermarketMayhemDisguiseComponent* GetDisguiseComponent() const { return DisguiseComponent; }
 
+	/** Returns the replicated equipped weapon, if one is available. */
+	ASupermarketMayhemWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
+
+	/** Makes the default weapon available to a Hunter. Server-authoritative. */
+	void SetHunterWeaponEquipped(bool bShouldBeEquipped);
+
 	/** Locks this character's movement in reaction to its PlayerState becoming eliminated. Called from PlayerState::OnRep_Eliminated (remote clients) and GameMode::EliminateHider (server/host). */
 	UFUNCTION(BlueprintCallable, Category = "Supermarket Mayhem|Elimination")
 	void ApplyEliminatedState();
@@ -131,6 +140,14 @@ public:
 	void ClearEliminatedState();
 
 protected:
+	/** Weapon class used when this character is assigned the Hunter role. */
+	UPROPERTY(EditDefaultsOnly, Category = "Supermarket Mayhem|Weapon")
+	TSubclassOf<ASupermarketMayhemWeapon> DefaultWeaponClass;
+
+	/** Server-spawned weapon actor available to relevant clients. */
+	UPROPERTY(Transient, Replicated, BlueprintReadOnly, Category = "Supermarket Mayhem|Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<ASupermarketMayhemWeapon> EquippedWeapon;
+
 	/** MaxWalkSpeed cached by ApplyEliminatedState() before locking movement; restored by ClearEliminatedState(). */
 	float CachedMaxWalkSpeedBeforeElimination = 0.0f;
 

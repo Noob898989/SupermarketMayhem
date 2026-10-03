@@ -8,13 +8,17 @@
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "SupermarketMayhem.h"
 #include "SupermarketMayhemDisguiseComponent.h"
 #include "SupermarketMayhemHunterComponent.h"
 #include "SupermarketMayhemPlayerState.h"
+#include "SupermarketMayhemWeapon.h"
 
 ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 {
+	DefaultWeaponClass = ASupermarketMayhemWeapon::StaticClass();
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 	
@@ -49,6 +53,23 @@ ASupermarketMayhemCharacter::ASupermarketMayhemCharacter()
 	DisguiseComponent = CreateDefaultSubobject<USupermarketMayhemDisguiseComponent>(TEXT("DisguiseComponent"));
 
 	HunterComponent = CreateDefaultSubobject<USupermarketMayhemHunterComponent>(TEXT("HunterComponent"));
+}
+
+void ASupermarketMayhemCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ASupermarketMayhemCharacter, EquippedWeapon);
+}
+
+void ASupermarketMayhemCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (HasAuthority())
+	{
+		const ASupermarketMayhemPlayerState* MayhemPlayerState = GetPlayerState<ASupermarketMayhemPlayerState>();
+		SetHunterWeaponEquipped(MayhemPlayerState && MayhemPlayerState->GetCurrentRole() == ESupermarketMayhemPlayerRole::Hunter);
+	}
 }
 
 void ASupermarketMayhemCharacter::OnRep_PlayerState()
@@ -157,7 +178,38 @@ void ASupermarketMayhemCharacter::DoEliminate()
 {
 	if (HunterComponent)
 	{
-		HunterComponent->TryEliminate();
+		HunterComponent->TryFire();
+	}
+}
+
+void ASupermarketMayhemCharacter::SetHunterWeaponEquipped(bool bShouldBeEquipped)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (!bShouldBeEquipped)
+	{
+		if (EquippedWeapon)
+		{
+			EquippedWeapon->Unequip();
+		}
+		return;
+	}
+
+	if (!EquippedWeapon && DefaultWeaponClass)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.Owner = this;
+		SpawnParameters.Instigator = this;
+		EquippedWeapon = GetWorld()->SpawnActor<ASupermarketMayhemWeapon>(DefaultWeaponClass, GetActorTransform(), SpawnParameters);
+	}
+
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->EquipTo(this);
+		ForceNetUpdate();
 	}
 }
 

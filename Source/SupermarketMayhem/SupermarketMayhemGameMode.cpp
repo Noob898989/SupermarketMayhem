@@ -112,6 +112,10 @@ void ASupermarketMayhemGameMode::AssignRole(ASupermarketMayhemPlayerState* Mayhe
 	}
 
 	MayhemPlayerState->SetCurrentRole(NewRole);
+	if (ASupermarketMayhemCharacter* Character = Cast<ASupermarketMayhemCharacter>(MayhemPlayerState->GetPawn()))
+	{
+		Character->SetHunterWeaponEquipped(NewRole == ESupermarketMayhemPlayerRole::Hunter);
+	}
 
 	const UEnum* RoleEnum = StaticEnum<ESupermarketMayhemPlayerRole>();
 	const FString RoleName = RoleEnum ? RoleEnum->GetNameStringByValue(static_cast<int64>(NewRole)) : TEXT("Unknown");

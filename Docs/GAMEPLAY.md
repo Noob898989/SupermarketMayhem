@@ -61,6 +61,13 @@ distinct hiding spots rather than a single fixed one.
 ## Hunter play
 Hunters inspect the environment, look for suspicious behavior, listen and use weapons.
 
+**Weapon foundation status:** the existing Hunter fire input now requests a
+shot from an equipped weapon actor. The weapon validates the Hunter role,
+equipment and Hunt phase and resolves hits on the server before the existing
+elimination flow runs. The weapon actor and equipped reference replicate.
+This is a technical foundation without ammo, reload, presentation or runtime
+PIE verification yet; see Docs/ROADMAP.md, Phase 4.
+
 ## Future ideas
 Possible later systems:
 - prop abilities
